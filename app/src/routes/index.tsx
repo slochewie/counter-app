@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { ChevronDown } from "lucide-react";
 
@@ -18,6 +18,8 @@ export const Route = createFileRoute("/")({
   component: CounterApp,
 });
 
+const RESET_HOLD_MS = 800;
+
 function CounterApp() {
   const { data: session, isPending } = authClient.useSession();
   const {
@@ -29,6 +31,8 @@ function CounterApp() {
     isPending: isActiveOrganizationPending,
   } = authClient.useActiveOrganization();
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [isResetHolding, setIsResetHolding] = useState(false);
+  const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const locationId = activeOrganization
     ? counterLocationIdForOrganization(activeOrganization.name)
     : null;
@@ -73,6 +77,36 @@ function CounterApp() {
     organizations,
     session,
   ]);
+
+  useEffect(() => {
+    return () => {
+      if (resetTimerRef.current) {
+        clearTimeout(resetTimerRef.current);
+      }
+    };
+  }, []);
+
+  function cancelResetHold() {
+    if (resetTimerRef.current) {
+      clearTimeout(resetTimerRef.current);
+      resetTimerRef.current = null;
+    }
+
+    setIsResetHolding(false);
+  }
+
+  function startResetHold() {
+    if (!isConnected || resetTimerRef.current) {
+      return;
+    }
+
+    setIsResetHolding(true);
+    resetTimerRef.current = setTimeout(() => {
+      resetTimerRef.current = null;
+      setIsResetHolding(false);
+      sendCommand("reset");
+    }, RESET_HOLD_MS);
+  }
 
   if (isPending || !session) {
     return (
@@ -144,12 +178,31 @@ function CounterApp() {
                 </div>
 
                 <Button
-                  className="h-12 w-full touch-manipulation rounded-xl border-zinc-700 bg-transparent text-base font-semibold text-zinc-200 hover:bg-zinc-800 hover:text-white active:scale-[0.99] sm:h-14"
+                  className={`h-12 w-full touch-manipulation select-none rounded-xl border-zinc-700 bg-transparent text-base font-semibold text-zinc-200 hover:bg-zinc-800 hover:text-white active:scale-[0.99] sm:h-14 ${
+                    isResetHolding ? "bg-zinc-800 text-white" : ""
+                  }`}
                   variant="outline"
                   disabled={!isConnected}
-                  onClick={() => sendCommand("reset")}
+                  onContextMenu={(event) => event.preventDefault()}
+                  onPointerDown={startResetHold}
+                  onPointerUp={cancelResetHold}
+                  onPointerCancel={cancelResetHold}
+                  onPointerLeave={cancelResetHold}
+                  onKeyDown={(event) => {
+                    if ((event.key === " " || event.key === "Enter") && !event.repeat) {
+                      event.preventDefault();
+                      startResetHold();
+                    }
+                  }}
+                  onKeyUp={(event) => {
+                    if (event.key === " " || event.key === "Enter") {
+                      event.preventDefault();
+                      cancelResetHold();
+                    }
+                  }}
+                  aria-label="Hold to reset counter"
                 >
-                  Reset
+                  {isResetHolding ? "Keep Holding…" : "Hold Reset"}
                 </Button>
 
                 <div className="border-t border-zinc-800 pt-2">

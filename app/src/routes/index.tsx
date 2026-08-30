@@ -17,6 +17,8 @@ import {
   SelectValue,
 } from "#/components/ui/select.tsx";
 import { authBaseURL, authClient } from "#/lib/auth-client.ts";
+import { counterLocationIdForOrganization } from "#/lib/counter-locations.ts";
+import { useCounterMqtt } from "#/lib/use-counter-mqtt.ts";
 
 export const Route = createFileRoute("/")({
   component: CounterApp,
@@ -32,6 +34,11 @@ function CounterApp() {
     data: activeOrganization,
     isPending: isActiveOrganizationPending,
   } = authClient.useActiveOrganization();
+  const locationId = activeOrganization
+    ? counterLocationIdForOrganization(activeOrganization.name)
+    : null;
+  const { count, status, updatedAt, updatedBy, sendCommand } =
+    useCounterMqtt(locationId);
 
   useEffect(() => {
     if (isPending || session) {
@@ -85,6 +92,10 @@ function CounterApp() {
   const organizationsPending =
     areOrganizationsPending || isActiveOrganizationPending;
   const displayName = session.user.name || session.user.email;
+  const isConnected = status === "connected";
+  const stateTopic = locationId
+    ? `counters/${locationId}/capacity/state`
+    : "—";
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -130,7 +141,7 @@ function CounterApp() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-6xl p-4 md:p-6">
+      <main className="mx-auto w-full max-w-xl p-4 md:p-6">
         <Card>
           <CardHeader>
             <CardTitle>Counter</CardTitle>
@@ -140,10 +151,65 @@ function CounterApp() {
                 : "Select an organization to continue."}
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Counter controls and live MQTT state will be wired in here next.
-            </p>
+          <CardContent className="space-y-6">
+            {activeOrganization && !locationId ? (
+              <p className="text-sm text-muted-foreground">
+                This organization does not have a Counter location configured yet.
+              </p>
+            ) : (
+              <>
+                <div className="text-center">
+                  <div className="text-7xl font-bold tabular-nums">
+                    {count ?? "—"}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <Button
+                    size="lg"
+                    disabled={!isConnected}
+                    onClick={() => sendCommand("decrement")}
+                  >
+                    -1
+                  </Button>
+                  <Button
+                    size="lg"
+                    disabled={!isConnected}
+                    onClick={() => sendCommand("increment")}
+                  >
+                    +1
+                  </Button>
+                </div>
+
+                <Button
+                  className="w-full"
+                  variant="outline"
+                  size="lg"
+                  disabled={!isConnected}
+                  onClick={() => sendCommand("reset")}
+                >
+                  Reset
+                </Button>
+
+                <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 border-t pt-4 text-sm">
+                  <dt className="text-muted-foreground">Status</dt>
+                  <dd className="text-right capitalize">{status}</dd>
+
+                  <dt className="text-muted-foreground">Topic</dt>
+                  <dd className="break-all text-right font-mono text-xs">
+                    {stateTopic}
+                  </dd>
+
+                  <dt className="text-muted-foreground">Last update</dt>
+                  <dd className="text-right">
+                    {updatedAt ? updatedAt.toLocaleString() : "—"}
+                  </dd>
+
+                  <dt className="text-muted-foreground">Source</dt>
+                  <dd className="text-right">{updatedBy ?? "—"}</dd>
+                </dl>
+              </>
+            )}
           </CardContent>
         </Card>
       </main>

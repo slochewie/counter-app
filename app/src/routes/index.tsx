@@ -1,5 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { ChevronDown } from "lucide-react";
 
 import { Button } from "#/components/ui/button.tsx";
 import {
@@ -34,6 +35,7 @@ function CounterApp() {
     data: activeOrganization,
     isPending: isActiveOrganizationPending,
   } = authClient.useActiveOrganization();
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const locationId = activeOrganization
     ? counterLocationIdForOrganization(activeOrganization.name)
     : null;
@@ -100,10 +102,10 @@ function CounterApp() {
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-50">
       <header className="border-b border-zinc-800 bg-zinc-950/95 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-3xl flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:gap-3 md:px-6">
-          <div className="min-w-0">
+        <div className="mx-auto flex w-full max-w-3xl flex-col gap-2 px-4 py-2.5 sm:flex-row sm:items-center sm:gap-3 sm:py-3 md:px-6">
+          <div className="min-w-0 leading-tight">
             <p className="truncate text-sm font-semibold">NiteOwl.dev Counter</p>
-            <p className="truncate text-xs text-zinc-400">{displayName}</p>
+            <p className="mt-0.5 truncate text-xs text-zinc-400">{displayName}</p>
           </div>
 
           <div className="flex min-w-0 flex-1 gap-2 sm:ml-auto sm:max-w-md">
@@ -146,7 +148,7 @@ function CounterApp() {
 
       <main className="mx-auto w-full max-w-xl p-3 sm:p-4 md:p-6">
         <Card className="overflow-hidden border-zinc-800 bg-zinc-900 text-zinc-50 shadow-2xl shadow-black/20">
-          <CardHeader className="border-b border-zinc-800 px-4 py-3 sm:px-6 sm:py-4">
+          <CardHeader className="border-b border-zinc-800 px-4 py-2.5 sm:px-6 sm:py-4">
             <div className="flex items-center justify-between gap-4">
               <CardTitle className="text-lg sm:text-xl">Counter</CardTitle>
 
@@ -200,27 +202,39 @@ function CounterApp() {
                   Reset
                 </Button>
 
-                <details className="border-t border-zinc-800 pt-3 text-xs sm:text-sm">
-                  <summary className="cursor-pointer touch-manipulation select-none py-1 font-medium text-zinc-400">
+                <div className="border-t border-zinc-800 pt-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="h-10 w-full touch-manipulation justify-between px-2 text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+                    aria-expanded={detailsOpen}
+                    onClick={() => setDetailsOpen((open) => !open)}
+                  >
                     Details
-                  </summary>
-                  <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2">
-                    <dt className="text-zinc-500">Topic</dt>
-                    <dd className="break-all text-right font-mono text-[11px] text-zinc-400 sm:text-xs">
-                      {stateTopic}
-                    </dd>
+                    <ChevronDown
+                      className={`h-4 w-4 transition-transform ${detailsOpen ? "rotate-180" : ""}`}
+                    />
+                  </Button>
 
-                    <dt className="text-zinc-500">Last update</dt>
-                    <dd className="text-right text-zinc-300">
-                      {updatedAt ? updatedAt.toLocaleString() : "—"}
-                    </dd>
+                  {detailsOpen ? (
+                    <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 px-2 pb-1 pt-2 text-xs sm:text-sm">
+                      <dt className="text-zinc-500">Topic</dt>
+                      <dd className="break-all text-right font-mono text-[11px] text-zinc-400 sm:text-xs">
+                        {stateTopic}
+                      </dd>
 
-                    <dt className="text-zinc-500">Source</dt>
-                    <dd className="text-right text-zinc-300">
-                      {updatedBy ?? "—"}
-                    </dd>
-                  </dl>
-                </details>
+                      <dt className="text-zinc-500">Last update</dt>
+                      <dd className="text-right text-zinc-300">
+                        {updatedAt ? updatedAt.toLocaleString() : "—"}
+                      </dd>
+
+                      <dt className="text-zinc-500">Source</dt>
+                      <dd className="text-right text-zinc-300">
+                        {updatedBy ?? "—"}
+                      </dd>
+                    </dl>
+                  ) : null}
+                </div>
               </>
             )}
           </CardContent>

@@ -26,13 +26,6 @@ import {
   DropdownMenuTrigger,
 } from "#/components/ui/dropdown-menu.tsx"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "#/components/ui/select.tsx"
-import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
@@ -86,14 +79,6 @@ const sidebarLabelClassName =
 export function AppChrome({ children }: { children: ReactNode }) {
   const location = useLocation()
   const { data: session } = authClient.useSession()
-  const {
-    data: organizations,
-    isPending: areOrganizationsPending,
-  } = authClient.useListOrganizations()
-  const {
-    data: activeOrganization,
-    isPending: isActiveOrganizationPending,
-  } = authClient.useActiveOrganization()
 
   if (!session) {
     return children
@@ -101,9 +86,6 @@ export function AppChrome({ children }: { children: ReactNode }) {
 
   const displayName = session.user.name || session.user.email
   const avatarLabel = getInitials(displayName)
-  const organizationList = organizations ?? []
-  const organizationsPending =
-    areOrganizationsPending || isActiveOrganizationPending
   const consoleBaseURL = authBaseURL.replace(/\/$/, "")
 
   return (
@@ -242,34 +224,6 @@ export function AppChrome({ children }: { children: ReactNode }) {
             </div>
 
             <div className="ml-auto flex min-w-0 items-center gap-2">
-              <Select
-                value={activeOrganization?.id ?? ""}
-                disabled={organizationsPending || organizationList.length === 0}
-                onValueChange={(organizationId) => {
-                  if (organizationId) {
-                    void authClient.organization.setActive({ organizationId })
-                  }
-                }}
-              >
-                <SelectTrigger className="w-28 min-w-0 sm:w-56">
-                  <SelectValue>
-                    {activeOrganization?.name ??
-                      (organizationsPending
-                        ? "Loading organizations…"
-                        : organizationList.length === 0
-                          ? "No organizations"
-                          : "Select organization")}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {organizationList.map((organization) => (
-                    <SelectItem key={organization.id} value={organization.id}>
-                      {organization.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
               <ThemeSwitcher inline />
 
               <DropdownMenu>

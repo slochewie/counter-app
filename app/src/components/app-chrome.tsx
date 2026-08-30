@@ -2,9 +2,11 @@ import type { ReactNode } from "react"
 import { useLocation } from "@tanstack/react-router"
 import {
   Building2Icon,
+  CalculatorIcon,
   GaugeIcon,
   LogOutIcon,
   ShieldCheckIcon,
+  SquareTerminalIcon,
   UserCircleIcon,
 } from "lucide-react"
 
@@ -55,6 +57,25 @@ function getInitials(name: string) {
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
 
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
+}
+
+function getAppLinks() {
+  const hostname = window.location.hostname
+  const isMccarthysDomain =
+    hostname === "mccarthysirishpub.com" ||
+    hostname.endsWith(".mccarthysirishpub.com")
+
+  if (isMccarthysDomain) {
+    return {
+      console: "https://console.mccarthysirishpub.com/",
+      tipCalculator: "https://tip-calculator.mccarthysirishpub.com/app",
+    }
+  }
+
+  return {
+    console: "https://console.niteowl.dev",
+    tipCalculator: "https://tip-calculator.niteowl.dev",
+  }
 }
 
 const sidebarButtonClassName =
@@ -108,6 +129,42 @@ export function AppChrome({ children }: { children: ReactNode }) {
                     >
                       <GaugeIcon />
                       <span className={sidebarLabelClassName}>Counter</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            <SidebarSeparator />
+
+            <SidebarGroup>
+              <SidebarGroupLabel className="text-sm">Apps</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      className={sidebarButtonClassName}
+                      tooltip="Console"
+                      onClick={() => {
+                        const links = getAppLinks()
+                        window.location.assign(links.console)
+                      }}
+                    >
+                      <SquareTerminalIcon />
+                      <span className={sidebarLabelClassName}>Console</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      className={sidebarButtonClassName}
+                      tooltip="Tip Calculator"
+                      onClick={() => {
+                        const links = getAppLinks()
+                        window.location.assign(links.tipCalculator)
+                      }}
+                    >
+                      <CalculatorIcon />
+                      <span className={sidebarLabelClassName}>Tip Calculator</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 </SidebarMenu>

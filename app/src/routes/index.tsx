@@ -6,9 +6,7 @@ import { Button } from "#/components/ui/button.tsx";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
-  CardTitle,
 } from "#/components/ui/card.tsx";
 import {
   Select,
@@ -17,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "#/components/ui/select.tsx";
+import { Skeleton } from "#/components/ui/skeleton.tsx";
 import { authBaseURL, authClient } from "#/lib/auth-client.ts";
 import { counterLocationIdForOrganization } from "#/lib/counter-locations.ts";
 import { useCounterMqtt } from "#/lib/use-counter-mqtt.ts";
@@ -26,6 +25,38 @@ export const Route = createFileRoute("/")({
 });
 
 const RESET_HOLD_MS = 800;
+
+function CounterSessionSkeleton() {
+  return (
+    <main className="min-h-full bg-zinc-950 text-zinc-50">
+      <div className="mx-auto w-full max-w-xl p-3 sm:p-4 md:p-6">
+        <Card className="overflow-hidden border-zinc-800 bg-zinc-900 text-zinc-50 shadow-2xl shadow-black/20">
+          <CardHeader className="border-b border-zinc-800 px-4 py-2.5 sm:px-6 sm:py-4">
+            <div className="flex items-center justify-between gap-4">
+              <Skeleton className="h-9 w-52 bg-zinc-800 sm:w-64" />
+              <Skeleton className="h-4 w-20 bg-zinc-800" />
+            </div>
+          </CardHeader>
+
+          <CardContent className="space-y-3 p-4 sm:space-y-5 sm:p-6">
+            <Skeleton className="h-36 w-full rounded-2xl bg-zinc-800 sm:h-52" />
+
+            <div className="grid grid-cols-2 gap-3 pb-1">
+              <Skeleton className="h-20 w-full rounded-2xl bg-zinc-800 sm:h-28" />
+              <Skeleton className="h-20 w-full rounded-2xl bg-zinc-800 sm:h-28" />
+            </div>
+
+            <Skeleton className="h-12 w-full rounded-xl bg-zinc-800 sm:h-14" />
+
+            <div className="border-t border-zinc-800 pt-2">
+              <Skeleton className="h-10 w-full bg-zinc-800" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </main>
+  );
+}
 
 function CounterApp() {
   const { data: session, isPending } = authClient.useSession();
@@ -118,19 +149,12 @@ function CounterApp() {
     }, RESET_HOLD_MS);
   }
 
-  if (isPending || !session) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-zinc-950 p-4 text-zinc-50">
-        <Card className="w-full max-w-md border-zinc-800 bg-zinc-900 text-zinc-50">
-          <CardHeader>
-            <CardTitle>NiteOwl.dev Counter</CardTitle>
-            <CardDescription className="text-zinc-400">
-              {isPending ? "Checking your session…" : "Redirecting to sign in…"}
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      </main>
-    );
+  if (isPending) {
+    return <CounterSessionSkeleton />;
+  }
+
+  if (!session) {
+    return null;
   }
 
   const isConnected = status === "connected";

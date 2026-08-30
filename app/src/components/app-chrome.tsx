@@ -1,5 +1,5 @@
 import type { ReactNode } from "react"
-import { Link, useLocation } from "@tanstack/react-router"
+import { useLocation } from "@tanstack/react-router"
 import {
   Building2Icon,
   GaugeIcon,
@@ -57,6 +57,11 @@ function getInitials(name: string) {
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
 }
 
+const sidebarButtonClassName =
+  "text-base [&>svg]:size-5 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-2"
+const sidebarLabelClassName =
+  "truncate group-data-[collapsible=icon]:hidden"
+
 export function AppChrome({ children }: { children: ReactNode }) {
   const location = useLocation()
   const { data: session } = authClient.useSession()
@@ -85,7 +90,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
       <SidebarProvider>
         <Sidebar collapsible="icon">
           <SidebarHeader className="px-3 py-4">
-            <div className="text-sm font-medium group-data-[collapsible=icon]:hidden">
+            <div className="text-base font-semibold group-data-[collapsible=icon]:hidden">
               NiteOwl
             </div>
           </SidebarHeader>
@@ -96,14 +101,13 @@ export function AppChrome({ children }: { children: ReactNode }) {
                 <SidebarMenu>
                   <SidebarMenuItem>
                     <SidebarMenuButton
-                      asChild
+                      className={sidebarButtonClassName}
                       isActive={location.pathname === "/"}
                       tooltip="Counter"
+                      onClick={() => window.location.assign("/")}
                     >
-                      <Link to="/">
-                        <GaugeIcon />
-                        <span>Counter</span>
-                      </Link>
+                      <GaugeIcon />
+                      <span className={sidebarLabelClassName}>Counter</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 </SidebarMenu>
@@ -113,31 +117,45 @@ export function AppChrome({ children }: { children: ReactNode }) {
             <SidebarSeparator />
 
             <SidebarGroup>
-              <SidebarGroupLabel>Settings</SidebarGroupLabel>
+              <SidebarGroupLabel className="text-sm">Settings</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
                   <SidebarMenuItem>
-                    <SidebarMenuButton asChild tooltip="Account">
-                      <a href={`${consoleBaseURL}/settings/account`}>
-                        <UserCircleIcon />
-                        <span>Account</span>
-                      </a>
+                    <SidebarMenuButton
+                      className={sidebarButtonClassName}
+                      tooltip="Account"
+                      onClick={() =>
+                        window.location.assign(`${consoleBaseURL}/settings/account`)
+                      }
+                    >
+                      <UserCircleIcon />
+                      <span className={sidebarLabelClassName}>Account</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                   <SidebarMenuItem>
-                    <SidebarMenuButton asChild tooltip="Security">
-                      <a href={`${consoleBaseURL}/settings/security`}>
-                        <ShieldCheckIcon />
-                        <span>Security</span>
-                      </a>
+                    <SidebarMenuButton
+                      className={sidebarButtonClassName}
+                      tooltip="Security"
+                      onClick={() =>
+                        window.location.assign(`${consoleBaseURL}/settings/security`)
+                      }
+                    >
+                      <ShieldCheckIcon />
+                      <span className={sidebarLabelClassName}>Security</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                   <SidebarMenuItem>
-                    <SidebarMenuButton asChild tooltip="Organizations">
-                      <a href={`${consoleBaseURL}/settings/organizations`}>
-                        <Building2Icon />
-                        <span>Organizations</span>
-                      </a>
+                    <SidebarMenuButton
+                      className={sidebarButtonClassName}
+                      tooltip="Organizations"
+                      onClick={() =>
+                        window.location.assign(
+                          `${consoleBaseURL}/settings/organizations`,
+                        )
+                      }
+                    >
+                      <Building2Icon />
+                      <span className={sidebarLabelClassName}>Organizations</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 </SidebarMenu>

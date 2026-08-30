@@ -10,6 +10,13 @@ import {
   CardHeader,
   CardTitle,
 } from "#/components/ui/card.tsx";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "#/components/ui/select.tsx";
 import { authBaseURL, authClient } from "#/lib/auth-client.ts";
 import { counterLocationIdForOrganization } from "#/lib/counter-locations.ts";
 import { useCounterMqtt } from "#/lib/use-counter-mqtt.ts";
@@ -44,6 +51,9 @@ function CounterApp() {
     : null;
   const { count, status, updatedAt, updatedBy, sendCommand } =
     useCounterMqtt(locationId, actor);
+  const organizationList = organizations ?? [];
+  const organizationsPending =
+    areOrganizationsPending || isActiveOrganizationPending;
 
   useEffect(() => {
     if (isPending || session) {
@@ -134,7 +144,33 @@ function CounterApp() {
         <Card className="overflow-hidden border-zinc-800 bg-zinc-900 text-zinc-50 shadow-2xl shadow-black/20">
           <CardHeader className="border-b border-zinc-800 px-4 py-2.5 sm:px-6 sm:py-4">
             <div className="flex items-center justify-between gap-4">
-              <CardTitle className="text-lg sm:text-xl">Counter</CardTitle>
+              <Select
+                value={activeOrganization?.id ?? ""}
+                disabled={organizationsPending || organizationList.length === 0}
+                onValueChange={(organizationId) => {
+                  if (organizationId) {
+                    void authClient.organization.setActive({ organizationId });
+                  }
+                }}
+              >
+                <SelectTrigger className="w-52 min-w-0 border-zinc-700 bg-zinc-950/50 sm:w-64">
+                  <SelectValue>
+                    {activeOrganization?.name ??
+                      (organizationsPending
+                        ? "Loading organizations…"
+                        : organizationList.length === 0
+                          ? "No organizations"
+                          : "Select organization")}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {organizationList.map((organization) => (
+                    <SelectItem key={organization.id} value={organization.id}>
+                      {organization.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
               <div className="flex shrink-0 items-center gap-2 text-xs font-medium text-zinc-400">
                 <span

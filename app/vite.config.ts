@@ -9,7 +9,10 @@ import { nitro } from 'nitro/vite'
 
 const config = defineConfig({
   server: {
-    allowedHosts: ['counter.niteowl.dev'],
+    allowedHosts: [
+      'counter.niteowl.dev',
+      'counter.mccarthysirishpub.com',
+    ],
   },
   resolve: { tsconfigPaths: true },
   plugins: [

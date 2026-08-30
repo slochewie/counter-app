@@ -207,19 +207,16 @@ export function AppChrome({ children }: { children: ReactNode }) {
               <ThemeSwitcher inline />
 
               <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    aria-label={`Open account menu for ${displayName}`}
-                  >
-                    <Avatar>
-                      {session.user.image ? (
-                        <AvatarImage src={session.user.image} alt="" />
-                      ) : null}
-                      <AvatarFallback>{avatarLabel}</AvatarFallback>
-                    </Avatar>
-                  </button>
+                <DropdownMenuTrigger
+                  className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  aria-label={`Open account menu for ${displayName}`}
+                >
+                  <Avatar>
+                    {session.user.image ? (
+                      <AvatarImage src={session.user.image} alt="" />
+                    ) : null}
+                    <AvatarFallback>{avatarLabel}</AvatarFallback>
+                  </Avatar>
                 </DropdownMenuTrigger>
 
                 <DropdownMenuContent align="end" className="w-64">

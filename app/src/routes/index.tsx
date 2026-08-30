@@ -10,13 +10,6 @@ import {
   CardHeader,
   CardTitle,
 } from "#/components/ui/card.tsx";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "#/components/ui/select.tsx";
 import { authBaseURL, authClient } from "#/lib/auth-client.ts";
 import { counterLocationIdForOrganization } from "#/lib/counter-locations.ts";
 import { useCounterMqtt } from "#/lib/use-counter-mqtt.ts";
@@ -90,63 +83,14 @@ function CounterApp() {
     );
   }
 
-  const organizationList = organizations ?? [];
-  const organizationsPending =
-    areOrganizationsPending || isActiveOrganizationPending;
-  const displayName = session.user.name || session.user.email;
   const isConnected = status === "connected";
   const stateTopic = locationId
     ? `counters/${locationId}/capacity/state`
     : "—";
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-50">
-      <header className="border-b border-zinc-800 bg-zinc-950/95 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-3xl flex-col gap-2 px-4 py-2.5 sm:flex-row sm:items-center sm:gap-3 sm:py-3 md:px-6">
-          <div className="min-w-0 leading-tight">
-            <p className="truncate text-sm font-semibold">NiteOwl.dev Counter</p>
-            <p className="mt-0.5 truncate text-xs text-zinc-400">{displayName}</p>
-          </div>
-
-          <div className="flex min-w-0 flex-1 gap-2 sm:ml-auto sm:max-w-md">
-            <Select
-              value={activeOrganization?.id}
-              disabled={organizationsPending || organizationList.length === 0}
-              onValueChange={(organizationId) => {
-                void authClient.organization.setActive({ organizationId });
-              }}
-            >
-              <SelectTrigger className="min-w-0 flex-1 border-zinc-700 bg-zinc-900 text-zinc-50">
-                <SelectValue>
-                  {activeOrganization?.name ??
-                    (organizationsPending
-                      ? "Loading organizations…"
-                      : organizationList.length === 0
-                        ? "No organizations"
-                        : "Select organization")}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {organizationList.map((organization) => (
-                  <SelectItem key={organization.id} value={organization.id}>
-                    {organization.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Button
-              variant="outline"
-              className="shrink-0 border-zinc-700 bg-zinc-900 text-zinc-100 hover:bg-zinc-800 hover:text-white"
-              onClick={() => void authClient.signOut()}
-            >
-              Sign out
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto w-full max-w-xl p-3 sm:p-4 md:p-6">
+    <main className="min-h-full bg-zinc-950 text-zinc-50">
+      <div className="mx-auto w-full max-w-xl p-3 sm:p-4 md:p-6">
         <Card className="overflow-hidden border-zinc-800 bg-zinc-900 text-zinc-50 shadow-2xl shadow-black/20">
           <CardHeader className="border-b border-zinc-800 px-4 py-2.5 sm:px-6 sm:py-4">
             <div className="flex items-center justify-between gap-4">
@@ -239,7 +183,7 @@ function CounterApp() {
             )}
           </CardContent>
         </Card>
-      </main>
-    </div>
+      </div>
+    </main>
   );
 }

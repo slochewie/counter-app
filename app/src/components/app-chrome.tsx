@@ -17,6 +17,7 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -204,29 +205,33 @@ export function AppChrome({ children }: { children: ReactNode }) {
                 </DropdownMenuTrigger>
 
                 <DropdownMenuContent align="end" className="w-64">
-                  <DropdownMenuLabel className="font-normal">
-                    <div className="flex items-center gap-3">
-                      <Avatar>
-                        {session.user.image ? (
-                          <AvatarImage src={session.user.image} alt="" />
-                        ) : null}
-                        <AvatarFallback>{avatarLabel}</AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium">{displayName}</p>
-                        {session.user.email ? (
-                          <p className="truncate text-xs text-muted-foreground">
-                            {session.user.email}
-                          </p>
-                        ) : null}
+                  <DropdownMenuGroup>
+                    <DropdownMenuLabel className="font-normal">
+                      <div className="flex items-center gap-3">
+                        <Avatar>
+                          {session.user.image ? (
+                            <AvatarImage src={session.user.image} alt="" />
+                          ) : null}
+                          <AvatarFallback>{avatarLabel}</AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">{displayName}</p>
+                          {session.user.email ? (
+                            <p className="truncate text-xs text-muted-foreground">
+                              {session.user.email}
+                            </p>
+                          ) : null}
+                        </div>
                       </div>
-                    </div>
-                  </DropdownMenuLabel>
+                    </DropdownMenuLabel>
+                  </DropdownMenuGroup>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onSelect={() => void authClient.signOut()}>
-                    <LogOutIcon />
-                    Sign out
-                  </DropdownMenuItem>
+                  <DropdownMenuGroup>
+                    <DropdownMenuItem onClick={() => void authClient.signOut()}>
+                      <LogOutIcon />
+                      Sign out
+                    </DropdownMenuItem>
+                  </DropdownMenuGroup>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>

@@ -162,14 +162,14 @@ function CounterApp() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <Button
-                    className="h-20 touch-manipulation rounded-2xl border border-zinc-700 bg-zinc-800 text-4xl font-bold text-white shadow-sm hover:bg-zinc-700 active:scale-[0.98] disabled:bg-zinc-900 disabled:text-zinc-600 sm:h-28 sm:text-5xl"
+                    className="h-20 touch-manipulation rounded-2xl border border-[#d8b63c] bg-[#f5ce45] text-4xl font-bold text-zinc-950 shadow-sm hover:bg-[#f8d65c] active:scale-[0.98] disabled:bg-zinc-900 disabled:text-zinc-600 sm:h-28 sm:text-5xl"
                     disabled={!isConnected}
                     onClick={() => sendCommand("decrement")}
                   >
                     −1
                   </Button>
                   <Button
-                    className="h-20 touch-manipulation rounded-2xl bg-zinc-50 text-4xl font-bold text-zinc-950 shadow-sm hover:bg-white active:scale-[0.98] disabled:bg-zinc-800 disabled:text-zinc-600 sm:h-28 sm:text-5xl"
+                    className="h-20 touch-manipulation rounded-2xl border border-[#4667a4] bg-[#5075bb] text-4xl font-bold text-white shadow-sm hover:bg-[#6085cb] active:scale-[0.98] disabled:bg-zinc-800 disabled:text-zinc-600 sm:h-28 sm:text-5xl"
                     disabled={!isConnected}
                     onClick={() => sendCommand("increment")}
                   >

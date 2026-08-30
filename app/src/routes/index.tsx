@@ -160,16 +160,16 @@ function CounterApp() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-3 pb-1">
                   <Button
-                    className="h-20 touch-manipulation rounded-2xl border border-[#d8b63c] bg-[#f5ce45] text-4xl font-bold text-zinc-950 shadow-sm hover:bg-[#f8d65c] active:scale-[0.98] disabled:bg-zinc-900 disabled:text-zinc-600 sm:h-28 sm:text-5xl"
+                    className="h-20 touch-manipulation rounded-2xl border border-[#d8b63c] border-t-[#ffe77e] bg-[#f5ce45] text-4xl font-bold text-zinc-950 shadow-[0_5px_0_#b28f22,0_8px_14px_rgba(0,0,0,0.28)] transition-[transform,box-shadow,background-color] hover:bg-[#f8d65c] active:translate-y-[3px] active:shadow-[0_2px_0_#b28f22,0_4px_8px_rgba(0,0,0,0.24)] disabled:bg-zinc-900 disabled:text-zinc-600 disabled:shadow-none sm:h-28 sm:text-5xl"
                     disabled={!isConnected}
                     onClick={() => sendCommand("decrement")}
                   >
                     −1
                   </Button>
                   <Button
-                    className="h-20 touch-manipulation rounded-2xl border border-[#4667a4] bg-[#5075bb] text-4xl font-bold text-white shadow-sm hover:bg-[#6085cb] active:scale-[0.98] disabled:bg-zinc-800 disabled:text-zinc-600 sm:h-28 sm:text-5xl"
+                    className="h-20 touch-manipulation rounded-2xl border border-[#4667a4] border-t-[#7f9bd5] bg-[#5075bb] text-4xl font-bold text-white shadow-[0_5px_0_#344f87,0_8px_14px_rgba(0,0,0,0.28)] transition-[transform,box-shadow,background-color] hover:bg-[#6085cb] active:translate-y-[3px] active:shadow-[0_2px_0_#344f87,0_4px_8px_rgba(0,0,0,0.24)] disabled:bg-zinc-800 disabled:text-zinc-600 disabled:shadow-none sm:h-28 sm:text-5xl"
                     disabled={!isConnected}
                     onClick={() => sendCommand("increment")}
                   >
@@ -178,8 +178,10 @@ function CounterApp() {
                 </div>
 
                 <Button
-                  className={`h-12 w-full touch-manipulation select-none rounded-xl text-base font-semibold active:scale-[0.99] sm:h-14 ${
-                    isResetHolding ? "brightness-75" : ""
+                  className={`h-12 w-full touch-manipulation select-none rounded-xl border-t border-t-white/20 text-base font-semibold shadow-[0_4px_0_color-mix(in_oklab,var(--destructive),black_32%),0_7px_12px_rgba(0,0,0,0.24)] transition-[transform,box-shadow,filter] active:translate-y-[2px] active:shadow-[0_2px_0_color-mix(in_oklab,var(--destructive),black_32%),0_3px_7px_rgba(0,0,0,0.2)] disabled:shadow-none sm:h-14 ${
+                    isResetHolding
+                      ? "translate-y-[2px] brightness-75 shadow-[0_2px_0_color-mix(in_oklab,var(--destructive),black_32%),0_3px_7px_rgba(0,0,0,0.2)]"
+                      : ""
                   }`}
                   variant="destructive"
                   disabled={!isConnected}

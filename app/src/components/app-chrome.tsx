@@ -74,7 +74,7 @@ function getAppLinks() {
 
   return {
     console: "https://console.niteowl.dev",
-    tipCalculator: "https://tip-calculator.niteowl.dev",
+    tipCalculator: "https://tip-calculator.niteowl.dev/app",
   }
 }
 

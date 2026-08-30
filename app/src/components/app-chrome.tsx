@@ -225,6 +225,15 @@ export function AppChrome({ children }: { children: ReactNode }) {
           <header className="flex min-h-16 items-center gap-3 border-b bg-background/95 px-4 backdrop-blur md:px-6">
             <SidebarTrigger />
 
+            <img
+              src={`${consoleBaseURL}/branding/niteowl.dev/niteowl-icon.png`}
+              alt=""
+              width={28}
+              height={28}
+              className="h-7 w-7 max-w-7 shrink-0 object-contain"
+              style={{ width: 28, height: 28 }}
+            />
+
             <div className="min-w-0 shrink-0">
               <p className="truncate text-sm font-semibold">Counter</p>
               <p className="hidden truncate text-xs text-muted-foreground sm:block">

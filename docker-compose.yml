@@ -1,0 +1,26 @@
+#name: tip-calculator
+
+services:
+
+  counter-app:
+    image: 'node:26-trixie'
+    working_dir: /app
+    command:
+      - sleep
+      - infinity
+    stdin_open: true
+    tty: true
+    ports:
+      - "3200:3000"
+    volumes:
+      - './app:/app'
+#    env_file:
+#      - .env
+#      - ./.env-better-auth
+    restart: unless-stopped
+    networks: [niteowl-dev]
+
+networks:
+  niteowl-dev:
+    name: niteowl-dev
+    external: true

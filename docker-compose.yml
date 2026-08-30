@@ -14,9 +14,8 @@ services:
       - "3200:3000"
     volumes:
       - './app:/app'
-#    env_file:
-#      - .env
-#      - ./.env-better-auth
+    env_file:
+      - .env-counter-app
     restart: unless-stopped
     networks: [niteowl-dev]
 

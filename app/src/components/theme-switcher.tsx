@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { MonitorIcon, MoonIcon, SunIcon } from "lucide-react"
 
-import { Button } from "#/components/ui/button.tsx"
+import { buttonVariants } from "#/components/ui/button.tsx"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -70,17 +70,17 @@ export function ThemeSwitcher({ inline = false }: { inline?: boolean }) {
       }
     >
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            aria-label="Change color theme"
-            title="Color theme"
-            className="bg-background/90 backdrop-blur"
-          >
-            <Icon />
-          </Button>
+        <DropdownMenuTrigger
+          type="button"
+          aria-label="Change color theme"
+          title="Color theme"
+          className={buttonVariants({
+            variant: "outline",
+            size: "icon",
+            className: "bg-background/90 backdrop-blur",
+          })}
+        >
+          <Icon />
         </DropdownMenuTrigger>
 
         <DropdownMenuContent align="end" className="w-36">

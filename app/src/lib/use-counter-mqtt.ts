@@ -11,7 +11,15 @@ type ConnectionStatus =
   | "error"
   | "unconfigured";
 
-export function useCounterMqtt(locationId: string | null) {
+type CounterActor = {
+  id: string;
+  name: string;
+} | null;
+
+export function useCounterMqtt(
+  locationId: string | null,
+  actor: CounterActor = null,
+) {
   const clientRef = useRef<MqttClient | null>(null);
   const [count, setCount] = useState<number | null>(null);
   const [status, setStatus] = useState<ConnectionStatus>("idle");
@@ -91,10 +99,10 @@ export function useCounterMqtt(locationId: string | null) {
           setCount(Number(parsed.value));
           setUpdatedAt(new Date());
           setUpdatedBy(
-            typeof parsed.source === "string"
-              ? parsed.source
-              : typeof parsed.updated_by === "string"
-                ? parsed.updated_by
+            typeof parsed.updated_by === "string"
+              ? parsed.updated_by
+              : typeof parsed.source === "string"
+                ? parsed.source
                 : null,
           );
         }
@@ -141,13 +149,15 @@ export function useCounterMqtt(locationId: string | null) {
         JSON.stringify({
           action,
           source: "web_page",
+          updated_by: actor?.name ?? "web_page",
+          updated_by_id: actor?.id ?? null,
           location: locationId,
         }),
       );
 
       return true;
     },
-    [locationId],
+    [actor?.id, actor?.name, locationId],
   );
 
   return {

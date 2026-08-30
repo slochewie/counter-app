@@ -32,8 +32,14 @@ function CounterApp() {
   const locationId = activeOrganization
     ? counterLocationIdForOrganization(activeOrganization.name)
     : null;
+  const actor = session
+    ? {
+        id: session.user.id,
+        name: session.user.name || session.user.email,
+      }
+    : null;
   const { count, status, updatedAt, updatedBy, sendCommand } =
-    useCounterMqtt(locationId);
+    useCounterMqtt(locationId, actor);
 
   useEffect(() => {
     if (isPending || session) {

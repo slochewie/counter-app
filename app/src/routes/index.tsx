@@ -115,15 +115,14 @@ function CounterApp() {
               }}
             >
               <SelectTrigger className="min-w-0 flex-1 border-zinc-700 bg-zinc-900 text-zinc-50">
-                <SelectValue
-                  placeholder={
-                    organizationsPending
+                <SelectValue>
+                  {activeOrganization?.name ??
+                    (organizationsPending
                       ? "Loading organizations…"
                       : organizationList.length === 0
                         ? "No organizations"
-                        : "Select organization"
-                  }
-                />
+                        : "Select organization")}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {organizationList.map((organization) => (

@@ -71,6 +71,17 @@ function getAppLinks() {
   }
 }
 
+function getSidebarDefaultOpen() {
+  if (typeof document === "undefined") return true
+
+  const sidebarState = document.cookie
+    .split("; ")
+    .find((cookie) => cookie.startsWith("sidebar_state="))
+    ?.split("=")[1]
+
+  return sidebarState !== "false"
+}
+
 const sidebarButtonClassName =
   "text-base [&>svg]:size-5 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-2"
 const sidebarLabelClassName =
@@ -87,10 +98,11 @@ export function AppChrome({ children }: { children: ReactNode }) {
   const displayName = session.user.name || session.user.email
   const avatarLabel = getInitials(displayName)
   const consoleBaseURL = authBaseURL.replace(/\/$/, "")
+  const sidebarDefaultOpen = getSidebarDefaultOpen()
 
   return (
     <TooltipProvider>
-      <SidebarProvider>
+      <SidebarProvider defaultOpen={sidebarDefaultOpen}>
         <Sidebar collapsible="icon">
           <SidebarHeader className="px-3 py-4">
             <div className="text-base font-semibold group-data-[collapsible=icon]:hidden">

@@ -178,10 +178,10 @@ function CounterApp() {
                 </div>
 
                 <Button
-                  className={`h-12 w-full touch-manipulation select-none rounded-xl border-zinc-700 bg-transparent text-base font-semibold text-zinc-200 hover:bg-zinc-800 hover:text-white active:scale-[0.99] sm:h-14 ${
-                    isResetHolding ? "bg-zinc-800 text-white" : ""
+                  className={`h-12 w-full touch-manipulation select-none rounded-xl text-base font-semibold active:scale-[0.99] sm:h-14 ${
+                    isResetHolding ? "brightness-75" : ""
                   }`}
-                  variant="outline"
+                  variant="destructive"
                   disabled={!isConnected}
                   onContextMenu={(event) => event.preventDefault()}
                   onPointerDown={startResetHold}

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react"
 import { useLocation } from "@tanstack/react-router"
 import {
+  ActivityIcon,
   Building2Icon,
   CalculatorIcon,
   GaugeIcon,
@@ -62,12 +63,14 @@ function getAppLinks() {
     return {
       console: "https://console.mccarthysirishpub.com/",
       tipCalculator: "https://tip-calculator.mccarthysirishpub.com/app",
+      networkStatus: "https://unifi.mccarthysirishpub.com",
     }
   }
 
   return {
     console: "https://console.niteowl.dev",
     tipCalculator: "https://tip-calculator.niteowl.dev/app",
+    networkStatus: "https://unifi.niteowl.dev",
   }
 }
 
@@ -159,6 +162,19 @@ export function AppChrome({ children }: { children: ReactNode }) {
                     >
                       <CalculatorIcon />
                       <span className={sidebarLabelClassName}>Tip Calculator</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      className={sidebarButtonClassName}
+                      tooltip="Network Status"
+                      onClick={() => {
+                        const links = getAppLinks()
+                        window.location.assign(links.networkStatus)
+                      }}
+                    >
+                      <ActivityIcon />
+                      <span className={sidebarLabelClassName}>Network Status</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 </SidebarMenu>

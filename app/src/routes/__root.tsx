@@ -14,6 +14,22 @@ interface MyRouterContext {
   queryClient: QueryClient
 }
 
+const themeInitScript = `
+(() => {
+  try {
+    const stored = localStorage.getItem('counter-app-theme')
+    const theme = stored === 'light' || stored === 'dark' || stored === 'system'
+      ? stored
+      : 'system'
+    const dark = theme === 'dark' ||
+      (theme === 'system' && matchMedia('(prefers-color-scheme: dark)').matches)
+
+    document.documentElement.classList.toggle('dark', dark)
+    document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
+  } catch {}
+})()
+`
+
 export const Route = createRootRouteWithContext<MyRouterContext>()({
   head: () => ({
     meta: [
@@ -40,8 +56,9 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <HeadContent />
       </head>
       <body>

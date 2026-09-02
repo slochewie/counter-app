@@ -17,6 +17,7 @@ import {
 } from "#/components/ui/select.tsx";
 import { Skeleton } from "#/components/ui/skeleton.tsx";
 import { authBaseURL, authClient } from "#/lib/auth-client.ts";
+import { getCounterAccess } from "#/lib/counter-access.ts";
 import { counterLocationIdForOrganization } from "#/lib/counter-locations.ts";
 import { useCounterMqtt } from "#/lib/use-counter-mqtt.ts";
 
@@ -25,6 +26,8 @@ export const Route = createFileRoute("/")({
 });
 
 const RESET_HOLD_MS = 800;
+
+type CounterAccessState = "idle" | "loading" | "allowed" | "denied" | "error";
 
 function CounterSessionSkeleton() {
   return (
@@ -70,6 +73,11 @@ function CounterApp() {
   } = authClient.useActiveOrganization();
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [isResetHolding, setIsResetHolding] = useState(false);
+  const [counterAccessState, setCounterAccessState] =
+    useState<CounterAccessState>("idle");
+  const [counterAccessError, setCounterAccessError] = useState<string | null>(
+    null,
+  );
   const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const locationId = activeOrganization
     ? counterLocationIdForOrganization(activeOrganization.name)
@@ -80,8 +88,9 @@ function CounterApp() {
         name: session.user.name || session.user.email,
       }
     : null;
+  const mqttLocationId = counterAccessState === "allowed" ? locationId : null;
   const { count, status, updatedAt, updatedBy, sendCommand } =
-    useCounterMqtt(locationId, actor);
+    useCounterMqtt(mqttLocationId, actor);
   const organizationList = organizations ?? [];
   const organizationsPending =
     areOrganizationsPending || isActiveOrganizationPending;
@@ -118,6 +127,42 @@ function CounterApp() {
     organizations,
     session,
   ]);
+
+  useEffect(() => {
+    if (!session || !activeOrganization || !locationId) {
+      setCounterAccessState("idle");
+      setCounterAccessError(null);
+      return;
+    }
+
+    const controller = new AbortController();
+
+    setCounterAccessState("loading");
+    setCounterAccessError(null);
+
+    void getCounterAccess(activeOrganization.id, locationId, controller.signal)
+      .then((allowed) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        setCounterAccessState(allowed ? "allowed" : "denied");
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        setCounterAccessState("error");
+        setCounterAccessError(
+          error instanceof Error
+            ? error.message
+            : "Unable to verify Counter access.",
+        );
+      });
+
+    return () => controller.abort();
+  }, [activeOrganization, locationId, session]);
 
   useEffect(() => {
     return () => {
@@ -211,6 +256,21 @@ function CounterApp() {
             {activeOrganization && !locationId ? (
               <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-4 text-sm text-zinc-400">
                 This organization does not have a Counter location configured yet.
+              </div>
+            ) : activeOrganization &&
+              locationId &&
+              (counterAccessState === "idle" ||
+                counterAccessState === "loading") ? (
+              <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-4 text-sm text-zinc-400">
+                Checking Counter access…
+              </div>
+            ) : activeOrganization && counterAccessState === "denied" ? (
+              <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-4 text-sm text-zinc-300">
+                You don&apos;t have access to this Counter in this organization.
+              </div>
+            ) : activeOrganization && counterAccessState === "error" ? (
+              <div className="rounded-xl border border-red-900/60 bg-red-950/30 p-4 text-sm text-red-200">
+                {counterAccessError ?? "Unable to verify Counter access."}
               </div>
             ) : (
               <>

@@ -13,6 +13,11 @@ export type CounterAssignment = {
   counterIds: string[];
 };
 
+export type CounterManagementAccess = {
+  allowed: boolean;
+  canManageManagers: boolean;
+};
+
 type EligibleMembersResponse = {
   members?: EligibleOrganizationMember[];
   error?: string;
@@ -34,6 +39,26 @@ type CounterAssignmentUpdateResponse = {
 
 type CounterAccessResponse = {
   allowed?: boolean;
+  error?: string;
+};
+
+type CounterManagementAccessResponse = {
+  allowed?: boolean;
+  canManageManagers?: boolean;
+  error?: string;
+};
+
+type CounterManagersResponse = {
+  managerUserIds?: string[];
+  canManageManagers?: boolean;
+  error?: string;
+};
+
+type CounterManagerUpdateResponse = {
+  manager?: {
+    userId: string;
+    enabled: boolean;
+  };
   error?: string;
 };
 
@@ -129,6 +154,97 @@ export async function updateCounterAssignment(
   }
 
   return result.assignment;
+}
+
+export async function getCounterManagementAccess(
+  organizationId: string,
+  signal?: AbortSignal,
+): Promise<CounterManagementAccess> {
+  const url = new URL("/api/auth/counter/management-access", authBaseURL);
+  url.searchParams.set("organizationId", organizationId);
+
+  const response = await fetch(url, {
+    credentials: "include",
+    signal,
+  });
+
+  const result = (await response.json()) as CounterManagementAccessResponse;
+
+  if (!response.ok) {
+    throw new Error(
+      typeof result.error === "string"
+        ? result.error
+        : "Unable to verify Counter management access.",
+    );
+  }
+
+  return {
+    allowed: result.allowed === true,
+    canManageManagers: result.canManageManagers === true,
+  };
+}
+
+export async function listCounterManagers(organizationId: string) {
+  const url = new URL("/api/auth/counter/managers", authBaseURL);
+  url.searchParams.set("organizationId", organizationId);
+
+  const response = await fetch(url, {
+    credentials: "include",
+  });
+
+  const result = (await response.json()) as CounterManagersResponse;
+
+  if (!response.ok) {
+    throw new Error(
+      typeof result.error === "string"
+        ? result.error
+        : "Unable to load Counter managers.",
+    );
+  }
+
+  return {
+    managerUserIds: Array.isArray(result.managerUserIds)
+      ? result.managerUserIds
+      : [],
+    canManageManagers: result.canManageManagers === true,
+  };
+}
+
+export async function updateCounterManager(
+  organizationId: string,
+  userId: string,
+  enabled: boolean,
+) {
+  const url = new URL("/api/auth/counter/manager", authBaseURL);
+
+  const response = await fetch(url, {
+    method: "PATCH",
+    credentials: "include",
+    headers: {
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      organizationId,
+      userId,
+      enabled,
+    }),
+  });
+
+  const result = (await response.json()) as CounterManagerUpdateResponse;
+
+  if (!response.ok) {
+    throw new Error(
+      typeof result.error === "string"
+        ? result.error
+        : "Unable to update Counter manager.",
+    );
+  }
+
+  if (!result.manager) {
+    throw new Error("Counter manager update completed without a manager.");
+  }
+
+  return result.manager;
 }
 
 export async function getCounterAccess(

@@ -99,12 +99,22 @@ export function AppChrome({ children }: { children: ReactNode }) {
   const location = useLocation()
   const { data: session } = authClient.useSession()
   const { data: activeOrganization } = authClient.useActiveOrganization()
-  const [canManageCounterAssignments, setCanManageCounterAssignments] =
+  const [hasDelegatedCounterManagement, setHasDelegatedCounterManagement] =
     useState(false)
 
+  const isGlobalAdmin =
+    (session?.user as { role?: string } | undefined)?.role === "admin"
+  const canManageCounterAssignments =
+    isGlobalAdmin || hasDelegatedCounterManagement
+
   useEffect(() => {
+    if (isGlobalAdmin) {
+      setHasDelegatedCounterManagement(false)
+      return
+    }
+
     if (!session || !activeOrganization?.id) {
-      setCanManageCounterAssignments(false)
+      setHasDelegatedCounterManagement(false)
       return
     }
 
@@ -112,16 +122,16 @@ export function AppChrome({ children }: { children: ReactNode }) {
 
     void getCounterManagementAccess(activeOrganization.id, controller.signal)
       .then((access) => {
-        setCanManageCounterAssignments(access.allowed)
+        setHasDelegatedCounterManagement(access.allowed)
       })
       .catch((error) => {
         if (!(error instanceof DOMException && error.name === "AbortError")) {
-          setCanManageCounterAssignments(false)
+          setHasDelegatedCounterManagement(false)
         }
       })
 
     return () => controller.abort()
-  }, [activeOrganization?.id, session])
+  }, [activeOrganization?.id, isGlobalAdmin, session])
 
   if (!session) {
     return children

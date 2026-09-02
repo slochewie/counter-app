@@ -275,15 +275,14 @@ function CounterAssignments() {
             }}
           >
             <SelectTrigger className="w-full sm:max-w-sm">
-              <SelectValue
-                placeholder={
-                  organizationsPending
+              <SelectValue>
+                {activeOrganization?.name ??
+                  (organizationsPending
                     ? "Loading organizations…"
                     : organizationList.length === 0
                       ? "No organizations"
-                      : "Select organization"
-                }
-              />
+                      : "Select organization")}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {organizationList.map((organization) => (

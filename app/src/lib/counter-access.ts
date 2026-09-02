@@ -195,7 +195,7 @@ export async function getCounterManagementAccess(
 
 export async function listCounterManagers(organizationId: string) {
   const response = await fetch(
-    authEndpointWithOrganization("/api/auth/counter/managers", organizationId),
+    authEndpointWithOrganization("/api/auth/counter/manager-list", organizationId),
     {
       credentials: "include",
     },

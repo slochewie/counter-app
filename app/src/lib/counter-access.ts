@@ -50,6 +50,7 @@ type CounterManagementAccessResponse = {
 
 type CounterManagersResponse = {
   managerUserIds?: string[];
+  globalAdminUserIds?: string[];
   canManageManagers?: boolean;
   error?: string;
 };
@@ -214,6 +215,9 @@ export async function listCounterManagers(organizationId: string) {
   return {
     managerUserIds: Array.isArray(result.managerUserIds)
       ? result.managerUserIds
+      : [],
+    globalAdminUserIds: Array.isArray(result.globalAdminUserIds)
+      ? result.globalAdminUserIds
       : [],
     canManageManagers: result.canManageManagers === true,
   };

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react"
+import { useEffect, useState, type ReactNode } from "react"
 import { useLocation } from "@tanstack/react-router"
 import {
   ActivityIcon,
@@ -47,6 +47,7 @@ import {
 } from "#/components/ui/sidebar.tsx"
 import { TooltipProvider } from "#/components/ui/tooltip.tsx"
 import { authBaseURL, authClient } from "#/lib/auth-client.ts"
+import { getCounterManagementAccess } from "#/lib/counter-access.ts"
 
 function getInitials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean)
@@ -97,6 +98,30 @@ const sidebarLabelClassName =
 export function AppChrome({ children }: { children: ReactNode }) {
   const location = useLocation()
   const { data: session } = authClient.useSession()
+  const { data: activeOrganization } = authClient.useActiveOrganization()
+  const [canManageCounterAssignments, setCanManageCounterAssignments] =
+    useState(false)
+
+  useEffect(() => {
+    if (!session || !activeOrganization?.id) {
+      setCanManageCounterAssignments(false)
+      return
+    }
+
+    const controller = new AbortController()
+
+    void getCounterManagementAccess(activeOrganization.id, controller.signal)
+      .then((access) => {
+        setCanManageCounterAssignments(access.allowed)
+      })
+      .catch((error) => {
+        if (!(error instanceof DOMException && error.name === "AbortError")) {
+          setCanManageCounterAssignments(false)
+        }
+      })
+
+    return () => controller.abort()
+  }, [activeOrganization?.id, session])
 
   if (!session) {
     return children
@@ -132,17 +157,19 @@ export function AppChrome({ children }: { children: ReactNode }) {
                       <span className={sidebarLabelClassName}>Counter</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      className={sidebarButtonClassName}
-                      isActive={location.pathname === "/assignments"}
-                      tooltip="Assignments"
-                      onClick={() => window.location.assign("/assignments")}
-                    >
-                      <UsersIcon />
-                      <span className={sidebarLabelClassName}>Assignments</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
+                  {canManageCounterAssignments ? (
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        className={sidebarButtonClassName}
+                        isActive={location.pathname === "/assignments"}
+                        tooltip="Assignments"
+                        onClick={() => window.location.assign("/assignments")}
+                      >
+                        <UsersIcon />
+                        <span className={sidebarLabelClassName}>Assignments</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ) : null}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>

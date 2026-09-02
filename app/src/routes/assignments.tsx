@@ -63,6 +63,7 @@ function CounterAssignments() {
   const [assignmentsError, setAssignmentsError] = useState<string | null>(null);
   const [updatingKey, setUpdatingKey] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const isGlobalAdmin = session?.user.role === "admin";
 
   useEffect(() => {
     if (isPending || session) return;
@@ -115,10 +116,15 @@ function CounterAssignments() {
       setManagementAccess(null);
 
       try {
-        const access = await getCounterManagementAccess(
-          activeOrganization.id,
-          controller.signal,
-        );
+        const access = isGlobalAdmin
+          ? {
+              allowed: true,
+              canManageManagers: true,
+            }
+          : await getCounterManagementAccess(
+              activeOrganization.id,
+              controller.signal,
+            );
 
         if (cancelled) return;
 
@@ -129,27 +135,66 @@ function CounterAssignments() {
 
         setManagementAccess(access);
 
-        const [eligibleMembers, assignmentResult, managerResult] =
-          await Promise.all([
-            listEligibleOrganizationMembers(activeOrganization.id),
-            listCounterAssignments(activeOrganization.id),
-            listCounterManagers(activeOrganization.id),
-          ]);
+        const memberResult = await Promise.resolve()
+          .then(() => listEligibleOrganizationMembers(activeOrganization.id))
+          .then((value) => ({ ok: true as const, value }))
+          .catch((error: unknown) => ({ ok: false as const, error }));
 
-        if (!cancelled) {
-          setMembers(eligibleMembers);
-          setAssignments(assignmentResult.assignments);
-          setManagerUserIds(managerResult.managerUserIds);
+        const assignmentResult = await Promise.resolve()
+          .then(() => listCounterAssignments(activeOrganization.id))
+          .then((value) => ({ ok: true as const, value }))
+          .catch((error: unknown) => ({ ok: false as const, error }));
+
+        const managerResult = await Promise.resolve()
+          .then(() => listCounterManagers(activeOrganization.id))
+          .then((value) => ({ ok: true as const, value }))
+          .catch((error: unknown) => ({ ok: false as const, error }));
+
+        if (cancelled) return;
+
+        const errors: string[] = [];
+
+        if (memberResult.ok) {
+          setMembers(memberResult.value);
+        } else {
+          setMembers([]);
+          errors.push(
+            `Members: ${memberResult.error instanceof Error ? memberResult.error.message : "Unable to load active organization members."}`,
+          );
+        }
+
+        if (assignmentResult.ok) {
+          setAssignments(assignmentResult.value.assignments);
+          setAssignmentsAvailable(assignmentResult.value.available);
+        } else {
+          setAssignments([]);
+          setAssignmentsAvailable(false);
+          errors.push(
+            `Assignments: ${assignmentResult.error instanceof Error ? assignmentResult.error.message : "Unable to load Counter assignments."}`,
+          );
+        }
+
+        if (managerResult.ok) {
+          setManagerUserIds(managerResult.value.managerUserIds);
           setManagementAccess({
             allowed: true,
             canManageManagers:
-              access.canManageManagers && managerResult.canManageManagers,
+              access.canManageManagers && managerResult.value.canManageManagers,
           });
-          setAssignmentsAvailable(assignmentResult.available);
-          setAssignmentsPending(false);
+        } else {
+          setManagerUserIds([]);
+          errors.push(
+            `Managers: ${managerResult.error instanceof Error ? managerResult.error.message : "Unable to load Counter managers."}`,
+          );
         }
+
+        setAssignmentsError(errors.length > 0 ? errors.join(" · ") : null);
+        setAssignmentsPending(false);
       } catch (error) {
-        if (!cancelled && !(error instanceof DOMException && error.name === "AbortError")) {
+        if (
+          !cancelled &&
+          !(error instanceof DOMException && error.name === "AbortError")
+        ) {
           setMembers([]);
           setAssignments([]);
           setManagerUserIds([]);
@@ -170,7 +215,7 @@ function CounterAssignments() {
       cancelled = true;
       controller.abort();
     };
-  }, [activeOrganization?.id, session]);
+  }, [activeOrganization?.id, isGlobalAdmin, session]);
 
   const counters = activeOrganization
     ? countersForOrganization(activeOrganization.name)

@@ -56,6 +56,7 @@ function CounterAssignments() {
   const [members, setMembers] = useState<EligibleOrganizationMember[]>([]);
   const [assignments, setAssignments] = useState<CounterAssignment[]>([]);
   const [managerUserIds, setManagerUserIds] = useState<string[]>([]);
+  const [globalAdminUserIds, setGlobalAdminUserIds] = useState<string[]>([]);
   const [managementAccess, setManagementAccess] =
     useState<CounterManagementAccess | null>(null);
   const [assignmentsAvailable, setAssignmentsAvailable] = useState(true);
@@ -100,6 +101,7 @@ function CounterAssignments() {
       setMembers([]);
       setAssignments([]);
       setManagerUserIds([]);
+      setGlobalAdminUserIds([]);
       setManagementAccess(null);
       setAssignmentsAvailable(true);
       setAssignmentsError(null);
@@ -176,6 +178,7 @@ function CounterAssignments() {
 
         if (managerResult.ok) {
           setManagerUserIds(managerResult.value.managerUserIds);
+          setGlobalAdminUserIds(managerResult.value.globalAdminUserIds);
           setManagementAccess({
             allowed: true,
             canManageManagers:
@@ -183,6 +186,7 @@ function CounterAssignments() {
           });
         } else {
           setManagerUserIds([]);
+          setGlobalAdminUserIds([]);
           errors.push(
             `Managers: ${managerResult.error instanceof Error ? managerResult.error.message : "Unable to load Counter managers."}`,
           );
@@ -198,6 +202,7 @@ function CounterAssignments() {
           setMembers([]);
           setAssignments([]);
           setManagerUserIds([]);
+          setGlobalAdminUserIds([]);
           setManagementAccess(null);
           setAssignmentsError(
             error instanceof Error
@@ -233,6 +238,13 @@ function CounterAssignments() {
   );
 
   const managerSet = useMemo(() => new Set(managerUserIds), [managerUserIds]);
+  const globalAdminSet = useMemo(
+    () => new Set(globalAdminUserIds),
+    [globalAdminUserIds],
+  );
+  const isDelegatedCounterManager =
+    managementAccess?.allowed === true &&
+    managementAccess.canManageManagers === false;
 
   const filteredMembers = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -249,7 +261,20 @@ function CounterAssignments() {
     member: EligibleOrganizationMember,
     counterId: string,
   ) {
-    if (!activeOrganization?.id || updatingKey || !assignmentsAvailable) return;
+    const protectedTarget =
+      isDelegatedCounterManager &&
+      (member.userId === session?.user.id ||
+        managerSet.has(member.userId) ||
+        globalAdminSet.has(member.userId));
+
+    if (
+      !activeOrganization?.id ||
+      updatingKey ||
+      !assignmentsAvailable ||
+      protectedTarget
+    ) {
+      return;
+    }
 
     const key = `${member.userId}:counter:${counterId}`;
     const enabled = !(assignmentMap.get(member.userId)?.has(counterId) ?? false);
@@ -314,7 +339,8 @@ function CounterAssignments() {
     if (
       !activeOrganization?.id ||
       updatingKey ||
-      !managementAccess?.canManageManagers
+      !managementAccess?.canManageManagers ||
+      globalAdminSet.has(member.userId)
     ) {
       return;
     }
@@ -481,8 +507,14 @@ function CounterAssignments() {
                 <TableBody>
                   {filteredMembers.map((member) => {
                     const isManager = managerSet.has(member.userId);
+                    const isTargetGlobalAdmin = globalAdminSet.has(member.userId);
                     const managerUpdating =
                       updatingKey === `${member.userId}:manager`;
+                    const protectedCounterTarget =
+                      isDelegatedCounterManager &&
+                      (member.userId === session.user.id ||
+                        isManager ||
+                        isTargetGlobalAdmin);
 
                     return (
                       <TableRow key={member.userId}>
@@ -502,13 +534,17 @@ function CounterAssignments() {
                             >
                               <button
                                 type="button"
-                                disabled={updatingKey !== null}
+                                disabled={
+                                  updatingKey !== null || isTargetGlobalAdmin
+                                }
                                 aria-pressed={isManager}
                                 onClick={() => void handleManagerToggle(member)}
                                 className={
-                                  isManager
-                                    ? "cursor-pointer"
-                                    : "cursor-pointer opacity-45"
+                                  isTargetGlobalAdmin
+                                    ? "cursor-not-allowed opacity-45"
+                                    : isManager
+                                      ? "cursor-pointer"
+                                      : "cursor-pointer opacity-45"
                                 }
                               >
                                 {managerUpdating ? "Saving…" : "Manager"}
@@ -535,14 +571,16 @@ function CounterAssignments() {
                                   <button
                                     type="button"
                                     disabled={
-                                      updatingKey !== null || !assignmentsAvailable
+                                      updatingKey !== null ||
+                                      !assignmentsAvailable ||
+                                      protectedCounterTarget
                                     }
                                     aria-pressed={enabled}
                                     onClick={() =>
                                       void handleCounterToggle(member, counter.id)
                                     }
                                     className={
-                                      assignmentsAvailable
+                                      assignmentsAvailable && !protectedCounterTarget
                                         ? enabled
                                           ? "cursor-pointer"
                                           : "cursor-pointer opacity-45"

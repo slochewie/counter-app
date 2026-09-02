@@ -32,6 +32,11 @@ type CounterAssignmentUpdateResponse = {
   error?: string;
 };
 
+type CounterAccessResponse = {
+  allowed?: boolean;
+  error?: string;
+};
+
 export async function listEligibleOrganizationMembers(organizationId: string) {
   const url = new URL(
     "/api/auth/organization-member-status/eligible",
@@ -124,4 +129,31 @@ export async function updateCounterAssignment(
   }
 
   return result.assignment;
+}
+
+export async function getCounterAccess(
+  organizationId: string,
+  counterId: string,
+  signal?: AbortSignal,
+) {
+  const url = new URL("/api/auth/counter/access", authBaseURL);
+  url.searchParams.set("organizationId", organizationId);
+  url.searchParams.set("counterId", counterId);
+
+  const response = await fetch(url, {
+    credentials: "include",
+    signal,
+  });
+
+  const result = (await response.json()) as CounterAccessResponse;
+
+  if (!response.ok) {
+    throw new Error(
+      typeof result.error === "string"
+        ? result.error
+        : "Unable to verify Counter access.",
+    );
+  }
+
+  return result.allowed === true;
 }

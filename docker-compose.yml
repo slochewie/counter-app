@@ -5,9 +5,19 @@ services:
   counter-app:
     image: 'node:26-trixie'
     working_dir: /app
+    build:
+      context: .
+      dockerfile: Dockerfile
     command:
-      - sleep
-      - infinity
+      - npm
+      - run
+      - dev
+      - --
+      - --host
+      - 0.0.0.0
+#    command:
+#      - sleep
+#      - infinity
     stdin_open: true
     tty: true
     ports:

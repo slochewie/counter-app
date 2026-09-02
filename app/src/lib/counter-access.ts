@@ -62,16 +62,24 @@ type CounterManagerUpdateResponse = {
   error?: string;
 };
 
-export async function listEligibleOrganizationMembers(organizationId: string) {
-  const url = new URL(
-    "/api/auth/organization-member-status/eligible",
-    authBaseURL,
-  );
-  url.searchParams.set("organizationId", organizationId);
+function authEndpoint(path: string) {
+  return `${authBaseURL.replace(/\/$/, "")}${path}`;
+}
 
-  const response = await fetch(url, {
-    credentials: "include",
-  });
+function authEndpointWithOrganization(path: string, organizationId: string) {
+  return `${authEndpoint(path)}?organizationId=${encodeURIComponent(organizationId)}`;
+}
+
+export async function listEligibleOrganizationMembers(organizationId: string) {
+  const response = await fetch(
+    authEndpointWithOrganization(
+      "/api/auth/organization-member-status/eligible",
+      organizationId,
+    ),
+    {
+      credentials: "include",
+    },
+  );
 
   const result = (await response.json()) as EligibleMembersResponse;
 
@@ -87,12 +95,12 @@ export async function listEligibleOrganizationMembers(organizationId: string) {
 }
 
 export async function listCounterAssignments(organizationId: string) {
-  const url = new URL("/api/auth/counter/assignments", authBaseURL);
-  url.searchParams.set("organizationId", organizationId);
-
-  const response = await fetch(url, {
-    credentials: "include",
-  });
+  const response = await fetch(
+    authEndpointWithOrganization("/api/auth/counter/assignments", organizationId),
+    {
+      credentials: "include",
+    },
+  );
 
   if (response.status === 404) {
     return {
@@ -123,9 +131,7 @@ export async function updateCounterAssignment(
   counterId: string,
   enabled: boolean,
 ) {
-  const url = new URL("/api/auth/counter/assignments", authBaseURL);
-
-  const response = await fetch(url, {
+  const response = await fetch(authEndpoint("/api/auth/counter/assignments"), {
     method: "PATCH",
     credentials: "include",
     headers: {
@@ -160,13 +166,16 @@ export async function getCounterManagementAccess(
   organizationId: string,
   signal?: AbortSignal,
 ): Promise<CounterManagementAccess> {
-  const url = new URL("/api/auth/counter/management-access", authBaseURL);
-  url.searchParams.set("organizationId", organizationId);
-
-  const response = await fetch(url, {
-    credentials: "include",
-    signal,
-  });
+  const response = await fetch(
+    authEndpointWithOrganization(
+      "/api/auth/counter/management-access",
+      organizationId,
+    ),
+    {
+      credentials: "include",
+      signal,
+    },
+  );
 
   const result = (await response.json()) as CounterManagementAccessResponse;
 
@@ -185,12 +194,12 @@ export async function getCounterManagementAccess(
 }
 
 export async function listCounterManagers(organizationId: string) {
-  const url = new URL("/api/auth/counter/managers", authBaseURL);
-  url.searchParams.set("organizationId", organizationId);
-
-  const response = await fetch(url, {
-    credentials: "include",
-  });
+  const response = await fetch(
+    authEndpointWithOrganization("/api/auth/counter/managers", organizationId),
+    {
+      credentials: "include",
+    },
+  );
 
   const result = (await response.json()) as CounterManagersResponse;
 
@@ -215,9 +224,7 @@ export async function updateCounterManager(
   userId: string,
   enabled: boolean,
 ) {
-  const url = new URL("/api/auth/counter/manager", authBaseURL);
-
-  const response = await fetch(url, {
+  const response = await fetch(authEndpoint("/api/auth/counter/manager"), {
     method: "PATCH",
     credentials: "include",
     headers: {
@@ -252,14 +259,16 @@ export async function getCounterAccess(
   counterId: string,
   signal?: AbortSignal,
 ) {
-  const url = new URL("/api/auth/counter/access", authBaseURL);
-  url.searchParams.set("organizationId", organizationId);
-  url.searchParams.set("counterId", counterId);
-
-  const response = await fetch(url, {
-    credentials: "include",
-    signal,
-  });
+  const response = await fetch(
+    `${authEndpointWithOrganization(
+      "/api/auth/counter/access",
+      organizationId,
+    )}&counterId=${encodeURIComponent(counterId)}`,
+    {
+      credentials: "include",
+      signal,
+    },
+  );
 
   const result = (await response.json()) as CounterAccessResponse;
 

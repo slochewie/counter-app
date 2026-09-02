@@ -30,10 +30,14 @@ import {
 import { authBaseURL, authClient } from "#/lib/auth-client.ts";
 import {
   type CounterAssignment,
+  type CounterManagementAccess,
   type EligibleOrganizationMember,
+  getCounterManagementAccess,
   listCounterAssignments,
+  listCounterManagers,
   listEligibleOrganizationMembers,
   updateCounterAssignment,
+  updateCounterManager,
 } from "#/lib/counter-access.ts";
 import { countersForOrganization } from "#/lib/counter-locations.ts";
 
@@ -43,16 +47,17 @@ export const Route = createFileRoute("/assignments")({
 
 function CounterAssignments() {
   const { data: session, isPending } = authClient.useSession();
-  const {
-    data: organizations,
-    isPending: areOrganizationsPending,
-  } = authClient.useListOrganizations();
+  const { data: organizations, isPending: areOrganizationsPending } =
+    authClient.useListOrganizations();
   const {
     data: activeOrganization,
     isPending: isActiveOrganizationPending,
   } = authClient.useActiveOrganization();
   const [members, setMembers] = useState<EligibleOrganizationMember[]>([]);
   const [assignments, setAssignments] = useState<CounterAssignment[]>([]);
+  const [managerUserIds, setManagerUserIds] = useState<string[]>([]);
+  const [managementAccess, setManagementAccess] =
+    useState<CounterManagementAccess | null>(null);
   const [assignmentsAvailable, setAssignmentsAvailable] = useState(true);
   const [assignmentsPending, setAssignmentsPending] = useState(false);
   const [assignmentsError, setAssignmentsError] = useState<string | null>(null);
@@ -93,34 +98,62 @@ function CounterAssignments() {
     if (!session || !activeOrganization?.id) {
       setMembers([]);
       setAssignments([]);
+      setManagerUserIds([]);
+      setManagementAccess(null);
       setAssignmentsAvailable(true);
       setAssignmentsError(null);
       setAssignmentsPending(false);
       return;
     }
 
+    const controller = new AbortController();
     let cancelled = false;
 
     async function loadAssignments() {
       setAssignmentsPending(true);
       setAssignmentsError(null);
+      setManagementAccess(null);
 
       try {
-        const [eligibleMembers, assignmentResult] = await Promise.all([
-          listEligibleOrganizationMembers(activeOrganization.id),
-          listCounterAssignments(activeOrganization.id),
-        ]);
+        const access = await getCounterManagementAccess(
+          activeOrganization.id,
+          controller.signal,
+        );
+
+        if (cancelled) return;
+
+        if (!access.allowed) {
+          window.location.replace("/");
+          return;
+        }
+
+        setManagementAccess(access);
+
+        const [eligibleMembers, assignmentResult, managerResult] =
+          await Promise.all([
+            listEligibleOrganizationMembers(activeOrganization.id),
+            listCounterAssignments(activeOrganization.id),
+            listCounterManagers(activeOrganization.id),
+          ]);
 
         if (!cancelled) {
           setMembers(eligibleMembers);
           setAssignments(assignmentResult.assignments);
+          setManagerUserIds(managerResult.managerUserIds);
+          setManagementAccess({
+            allowed: true,
+            canManageManagers:
+              access.canManageManagers && managerResult.canManageManagers,
+          });
           setAssignmentsAvailable(assignmentResult.available);
           setAssignmentsPending(false);
         }
       } catch (error) {
-        if (!cancelled) {
+        if (!cancelled && !(error instanceof DOMException && error.name === "AbortError")) {
           setMembers([]);
           setAssignments([]);
+          setManagerUserIds([]);
+          setManagementAccess(null);
           setAssignmentsError(
             error instanceof Error
               ? error.message
@@ -135,6 +168,7 @@ function CounterAssignments() {
 
     return () => {
       cancelled = true;
+      controller.abort();
     };
   }, [activeOrganization?.id, session]);
 
@@ -153,6 +187,8 @@ function CounterAssignments() {
     [assignments],
   );
 
+  const managerSet = useMemo(() => new Set(managerUserIds), [managerUserIds]);
+
   const filteredMembers = useMemo(() => {
     const query = search.trim().toLowerCase();
     if (!query) return members;
@@ -170,7 +206,7 @@ function CounterAssignments() {
   ) {
     if (!activeOrganization?.id || updatingKey || !assignmentsAvailable) return;
 
-    const key = `${member.userId}:${counterId}`;
+    const key = `${member.userId}:counter:${counterId}`;
     const enabled = !(assignmentMap.get(member.userId)?.has(counterId) ?? false);
     setUpdatingKey(key);
     setAssignmentsError(null);
@@ -229,6 +265,47 @@ function CounterAssignments() {
     }
   }
 
+  async function handleManagerToggle(member: EligibleOrganizationMember) {
+    if (
+      !activeOrganization?.id ||
+      updatingKey ||
+      !managementAccess?.canManageManagers
+    ) {
+      return;
+    }
+
+    const key = `${member.userId}:manager`;
+    const enabled = !managerSet.has(member.userId);
+    setUpdatingKey(key);
+    setAssignmentsError(null);
+
+    try {
+      const updated = await updateCounterManager(
+        activeOrganization.id,
+        member.userId,
+        enabled,
+      );
+
+      setManagerUserIds((current) => {
+        const next = new Set(current);
+        if (updated.enabled) {
+          next.add(updated.userId);
+        } else {
+          next.delete(updated.userId);
+        }
+        return [...next];
+      });
+    } catch (error) {
+      setAssignmentsError(
+        error instanceof Error
+          ? error.message
+          : "Unable to update Counter manager.",
+      );
+    } finally {
+      setUpdatingKey(null);
+    }
+  }
+
   if (isPending || !session) {
     return (
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-5 p-4 md:p-6 lg:p-8">
@@ -252,7 +329,7 @@ function CounterAssignments() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Assignments</h1>
           <p className="text-sm text-muted-foreground">
-            Choose which Counters each active organization member can access.
+            Manage Counter access for active organization members.
           </p>
         </div>
       </div>
@@ -261,7 +338,7 @@ function CounterAssignments() {
         <CardHeader>
           <CardTitle>Organization</CardTitle>
           <CardDescription>
-            Counter access is stored separately for each organization.
+            Counter access and Counter Managers are stored separately for each organization.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -299,7 +376,7 @@ function CounterAssignments() {
         <CardHeader>
           <CardTitle>Counter access</CardTitle>
           <CardDescription>
-            Only active organization members are listed. Select a Counter badge to grant or remove access.
+            Only active organization members are listed. Counter Managers can grant or remove Counter access. Organization owners and admins can also designate Counter Managers.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
@@ -314,8 +391,8 @@ function CounterAssignments() {
           </div>
 
           {!assignmentsAvailable ? (
-            <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-300">
-              Counter assignment storage is not installed on the auth service yet. Member filtering is live, but access badges are read-only until that endpoint is available.
+            <p className="rounded-md border px-3 py-2 text-sm text-muted-foreground">
+              Counter assignment storage is not available. Member filtering is live, but access badges are read-only.
             </p>
           ) : null}
 
@@ -350,61 +427,93 @@ function CounterAssignments() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Member</TableHead>
+                    {managementAccess?.canManageManagers ? (
+                      <TableHead>Manager</TableHead>
+                    ) : null}
                     <TableHead>Counters</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredMembers.map((member) => (
-                    <TableRow key={member.userId}>
-                      <TableCell>
-                        <div className="min-w-44">
-                          <p className="font-medium">{member.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {member.email}
-                          </p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex min-w-max flex-wrap gap-2">
-                          {counters.map((counter) => {
-                            const enabled =
-                              assignmentMap.get(member.userId)?.has(counter.id) ??
-                              false;
-                            const isUpdating =
-                              updatingKey === `${member.userId}:${counter.id}`;
+                  {filteredMembers.map((member) => {
+                    const isManager = managerSet.has(member.userId);
+                    const managerUpdating =
+                      updatingKey === `${member.userId}:manager`;
 
-                            return (
-                              <Badge
-                                key={counter.id}
-                                asChild
-                                variant={enabled ? "default" : "outline"}
+                    return (
+                      <TableRow key={member.userId}>
+                        <TableCell>
+                          <div className="min-w-44">
+                            <p className="font-medium">{member.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {member.email}
+                            </p>
+                          </div>
+                        </TableCell>
+                        {managementAccess?.canManageManagers ? (
+                          <TableCell>
+                            <Badge
+                              asChild
+                              variant={isManager ? "default" : "outline"}
+                            >
+                              <button
+                                type="button"
+                                disabled={updatingKey !== null}
+                                aria-pressed={isManager}
+                                onClick={() => void handleManagerToggle(member)}
+                                className={
+                                  isManager
+                                    ? "cursor-pointer"
+                                    : "cursor-pointer opacity-45"
+                                }
                               >
-                                <button
-                                  type="button"
-                                  disabled={
-                                    updatingKey !== null || !assignmentsAvailable
-                                  }
-                                  aria-pressed={enabled}
-                                  onClick={() =>
-                                    void handleCounterToggle(member, counter.id)
-                                  }
-                                  className={
-                                    assignmentsAvailable
-                                      ? enabled
-                                        ? "cursor-pointer"
-                                        : "cursor-pointer opacity-45"
-                                      : "cursor-not-allowed opacity-45"
-                                  }
+                                {managerUpdating ? "Saving…" : "Manager"}
+                              </button>
+                            </Badge>
+                          </TableCell>
+                        ) : null}
+                        <TableCell>
+                          <div className="flex min-w-max flex-wrap gap-2">
+                            {counters.map((counter) => {
+                              const enabled =
+                                assignmentMap.get(member.userId)?.has(counter.id) ??
+                                false;
+                              const isUpdating =
+                                updatingKey ===
+                                `${member.userId}:counter:${counter.id}`;
+
+                              return (
+                                <Badge
+                                  key={counter.id}
+                                  asChild
+                                  variant={enabled ? "default" : "outline"}
                                 >
-                                  {isUpdating ? "Saving…" : counter.name}
-                                </button>
-                              </Badge>
-                            );
-                          })}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                                  <button
+                                    type="button"
+                                    disabled={
+                                      updatingKey !== null || !assignmentsAvailable
+                                    }
+                                    aria-pressed={enabled}
+                                    onClick={() =>
+                                      void handleCounterToggle(member, counter.id)
+                                    }
+                                    className={
+                                      assignmentsAvailable
+                                        ? enabled
+                                          ? "cursor-pointer"
+                                          : "cursor-pointer opacity-45"
+                                        : "cursor-not-allowed opacity-45"
+                                    }
+                                  >
+                                    {isUpdating ? "Saving…" : counter.name}
+                                  </button>
+                                </Badge>
+                              );
+                            })}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>

@@ -67,14 +67,14 @@ function getAppLinks() {
   if (isMccarthysDomain) {
     return {
       console: "https://console.mccarthysirishpub.com/",
-      tipCalculator: "https://tip-calculator.mccarthysirishpub.com/app",
+      tipCalculator: "https://tip-calculator.mccarthysirishpub.com",
       networkStatus: "https://unifi.mccarthysirishpub.com",
     }
   }
 
   return {
     console: "https://console.niteowl.dev",
-    tipCalculator: "https://tip-calculator.niteowl.dev/app",
+    tipCalculator: "https://tip-calculator.niteowl.dev",
     networkStatus: "https://unifi.niteowl.dev",
   }
 }

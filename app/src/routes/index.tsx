@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { ChevronDown } from "lucide-react";
+import { CalculatorIcon, ChevronDown } from "lucide-react";
 
 import { Button } from "#/components/ui/button.tsx";
 import {
@@ -33,6 +33,12 @@ function CounterSessionSkeleton() {
   return (
     <main className="min-h-full bg-zinc-950 text-zinc-50">
       <div className="mx-auto w-full max-w-xl p-3 sm:p-4 md:p-6">
+        <div className="mb-5 flex items-center gap-3">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-full border border-zinc-800 bg-zinc-900 text-zinc-400 shadow-sm">
+            <CalculatorIcon className="size-5" />
+          </div>
+          <h1 className="text-2xl font-semibold tracking-tight">Calculator</h1>
+        </div>
         <Card className="overflow-hidden border-zinc-800 bg-zinc-900 text-zinc-50 shadow-2xl shadow-black/20">
           <CardHeader className="border-b border-zinc-800 px-4 py-2.5 sm:px-6 sm:py-4">
             <div className="flex items-center justify-between gap-4">
@@ -210,6 +216,12 @@ function CounterApp() {
   return (
     <main className="min-h-full bg-zinc-950 text-zinc-50">
       <div className="mx-auto w-full max-w-xl p-3 sm:p-4 md:p-6">
+        <div className="mb-5 flex items-center gap-3">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-full border border-zinc-800 bg-zinc-900 text-zinc-400 shadow-sm">
+            <CalculatorIcon className="size-5" />
+          </div>
+          <h1 className="text-2xl font-semibold tracking-tight">Calculator</h1>
+        </div>
         <Card className="overflow-hidden border-zinc-800 bg-zinc-900 text-zinc-50 shadow-2xl shadow-black/20">
           <CardHeader className="border-b border-zinc-800 px-4 py-2.5 sm:px-6 sm:py-4">
             <div className="flex items-center justify-between gap-4">

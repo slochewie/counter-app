@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { OrganizationSelector } from "@niteowl/ui";
 import { SearchIcon, UsersIcon } from "lucide-react";
 
 import { Badge } from "#/components/ui/badge.tsx";
@@ -11,13 +12,6 @@ import {
   CardTitle,
 } from "#/components/ui/card.tsx";
 import { Input } from "#/components/ui/input.tsx";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "#/components/ui/select.tsx";
 import { Skeleton } from "#/components/ui/skeleton.tsx";
 import {
   Table,
@@ -405,43 +399,15 @@ function CounterAssignments() {
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Organization</CardTitle>
-          <CardDescription>
-            Counter access and Counter Managers are stored separately for each organization.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Select
-            value={activeOrganization?.id ?? ""}
-            disabled={organizationsPending || organizationList.length === 0}
-            onValueChange={(organizationId) => {
-              if (organizationId) {
-                void authClient.organization.setActive({ organizationId });
-              }
-            }}
-          >
-            <SelectTrigger className="w-full sm:max-w-sm">
-              <SelectValue>
-                {activeOrganization?.name ??
-                  (organizationsPending
-                    ? "Loading organizations…"
-                    : organizationList.length === 0
-                      ? "No organizations"
-                      : "Select organization")}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {organizationList.map((organization) => (
-                <SelectItem key={organization.id} value={organization.id}>
-                  {organization.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </CardContent>
-      </Card>
+      <OrganizationSelector
+        organizations={organizationList}
+        value={activeOrganization?.id}
+        loading={organizationsPending}
+        description="Counter access and Counter Managers are stored separately for each organization."
+        onValueChange={(organizationId) => {
+          void authClient.organization.setActive({ organizationId });
+        }}
+      />
 
       <Card>
         <CardHeader>

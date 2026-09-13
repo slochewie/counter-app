@@ -24,6 +24,8 @@ services:
       - "3200:3000"
     volumes:
       - './app:/app'
+      - '../niteowl-ui:/app/packages/niteowl-ui'
+      - '../niteowl-app-config:/app/packages/niteowl-app-config'
     env_file:
       - .env-counter-app
     restart: unless-stopped

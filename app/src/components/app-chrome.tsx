@@ -1,11 +1,12 @@
 import { useEffect, useState, type ReactNode } from "react"
 import { useLocation } from "@tanstack/react-router"
+import { buildNavigation, type NiteOwlIconId } from "@niteowl/app-config"
 import {
-  ActivityIcon,
   Building2Icon,
-  CalculatorIcon,
   GaugeIcon,
+  HandCoinsIcon,
   LogOutIcon,
+  NetworkIcon,
   PaletteIcon,
   SettingsIcon,
   ShieldCheckIcon,
@@ -67,15 +68,17 @@ function getAppLinks() {
   if (isMccarthysDomain) {
     return {
       console: "https://console.mccarthysirishpub.com/",
-      tipCalculator: "https://tip-calculator.mccarthysirishpub.com",
-      networkStatus: "https://unifi.mccarthysirishpub.com",
+      "tip-calculator": "https://tips.mccarthysirishpub.com",
+      counter: "https://counter.mccarthysirishpub.com",
+      "network-status": "https://unifi.mccarthysirishpub.com",
     }
   }
 
   return {
     console: "https://console.niteowl.dev",
-    tipCalculator: "https://tip-calculator.niteowl.dev",
-    networkStatus: "https://unifi.niteowl.dev",
+    "tip-calculator": "https://tips.niteowl.dev",
+    counter: "https://counter.niteowl.dev",
+    "network-status": "https://unifi.niteowl.dev",
   }
 }
 
@@ -94,6 +97,23 @@ const sidebarButtonClassName =
   "text-base [&>svg]:size-5 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-2"
 const sidebarLabelClassName =
   "truncate group-data-[collapsible=icon]:hidden"
+
+function NavigationIcon({ icon }: { icon: NiteOwlIconId }) {
+  switch (icon) {
+    case "gauge":
+      return <GaugeIcon />
+    case "users":
+      return <UsersIcon />
+    case "square-terminal":
+      return <SquareTerminalIcon />
+    case "hand-coins":
+      return <HandCoinsIcon />
+    case "network":
+      return <NetworkIcon />
+    default:
+      return null
+  }
+}
 
 export function AppChrome({ children }: { children: ReactNode }) {
   const location = useLocation()
@@ -141,6 +161,17 @@ export function AppChrome({ children }: { children: ReactNode }) {
   const avatarLabel = getInitials(displayName)
   const consoleBaseURL = authBaseURL.replace(/\/$/, "")
   const sidebarDefaultOpen = getSidebarDefaultOpen()
+  const navigation = buildNavigation({
+    currentApp: "counter",
+    currentPath: location.pathname,
+    urls: getAppLinks(),
+    canAccess: ({ key }) =>
+      key === "counter:manage-assignments"
+        ? canManageCounterAssignments
+        : true,
+  })
+  const primarySection = navigation.primary[0]
+  const appsSection = navigation.apps[0]
 
   return (
     <TooltipProvider>
@@ -156,30 +187,19 @@ export function AppChrome({ children }: { children: ReactNode }) {
             <SidebarGroup>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      className={sidebarButtonClassName}
-                      isActive={location.pathname === "/"}
-                      tooltip="Counter"
-                      onClick={() => window.location.assign("/")}
-                    >
-                      <GaugeIcon />
-                      <span className={sidebarLabelClassName}>Counter</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  {canManageCounterAssignments ? (
-                    <SidebarMenuItem>
+                  {primarySection.items.map((item) => (
+                    <SidebarMenuItem key={item.id}>
                       <SidebarMenuButton
                         className={sidebarButtonClassName}
-                        isActive={location.pathname === "/assignments"}
-                        tooltip="Assignments"
-                        onClick={() => window.location.assign("/assignments")}
+                        isActive={item.active}
+                        tooltip={item.label}
+                        onClick={() => window.location.assign(item.href)}
                       >
-                        <UsersIcon />
-                        <span className={sidebarLabelClassName}>Assignments</span>
+                        <NavigationIcon icon={item.icon} />
+                        <span className={sidebarLabelClassName}>{item.label}</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
-                  ) : null}
+                  ))}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
@@ -187,48 +207,21 @@ export function AppChrome({ children }: { children: ReactNode }) {
             <SidebarSeparator />
 
             <SidebarGroup>
-              <SidebarGroupLabel className="text-sm">Apps</SidebarGroupLabel>
+              <SidebarGroupLabel className="text-sm">{appsSection.label}</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      className={sidebarButtonClassName}
-                      tooltip="Console"
-                      onClick={() => {
-                        const links = getAppLinks()
-                        window.location.assign(links.console)
-                      }}
-                    >
-                      <SquareTerminalIcon />
-                      <span className={sidebarLabelClassName}>Console</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      className={sidebarButtonClassName}
-                      tooltip="Tip Calculator"
-                      onClick={() => {
-                        const links = getAppLinks()
-                        window.location.assign(links.tipCalculator)
-                      }}
-                    >
-                      <CalculatorIcon />
-                      <span className={sidebarLabelClassName}>Tip Calculator</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      className={sidebarButtonClassName}
-                      tooltip="Network Status"
-                      onClick={() => {
-                        const links = getAppLinks()
-                        window.location.assign(links.networkStatus)
-                      }}
-                    >
-                      <ActivityIcon />
-                      <span className={sidebarLabelClassName}>Network Status</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
+                  {appsSection.items.map((item) => (
+                    <SidebarMenuItem key={item.id}>
+                      <SidebarMenuButton
+                        className={sidebarButtonClassName}
+                        tooltip={item.label}
+                        onClick={() => window.location.assign(item.href)}
+                      >
+                        <NavigationIcon icon={item.icon} />
+                        <span className={sidebarLabelClassName}>{item.label}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>

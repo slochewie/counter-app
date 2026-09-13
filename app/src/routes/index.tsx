@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { OrganizationSelector } from "@niteowl/ui";
 import { ChevronDown, GaugeIcon } from "lucide-react";
 
 import { Button } from "#/components/ui/button.tsx";
@@ -8,13 +9,6 @@ import {
   CardContent,
   CardHeader,
 } from "#/components/ui/card.tsx";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "#/components/ui/select.tsx";
 import { Skeleton } from "#/components/ui/skeleton.tsx";
 import { authBaseURL, authClient } from "#/lib/auth-client.ts";
 import { getCounterAccess } from "#/lib/counter-access.ts";
@@ -225,33 +219,17 @@ function CounterApp() {
         <Card className="overflow-hidden border-zinc-800 bg-zinc-900 text-zinc-50 shadow-2xl shadow-black/20">
           <CardHeader className="border-b border-zinc-800 px-4 py-2.5 sm:px-6 sm:py-4">
             <div className="flex items-center justify-between gap-4">
-              <Select
-                value={activeOrganization?.id ?? ""}
-                disabled={organizationsPending || organizationList.length === 0}
+              <OrganizationSelector
+                variant="compact"
+                organizations={organizationList}
+                value={activeOrganization?.id}
+                loading={organizationsPending}
+                className="w-52 min-w-0 sm:w-64"
+                selectClassName="border-zinc-700 bg-zinc-950/50 text-zinc-100"
                 onValueChange={(organizationId) => {
-                  if (organizationId) {
-                    void authClient.organization.setActive({ organizationId });
-                  }
+                  void authClient.organization.setActive({ organizationId });
                 }}
-              >
-                <SelectTrigger className="w-52 min-w-0 border-zinc-700 bg-zinc-950/50 sm:w-64">
-                  <SelectValue>
-                    {activeOrganization?.name ??
-                      (organizationsPending
-                        ? "Loading organizations…"
-                        : organizationList.length === 0
-                          ? "No organizations"
-                          : "Select organization")}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {organizationList.map((organization) => (
-                    <SelectItem key={organization.id} value={organization.id}>
-                      {organization.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              />
 
               <div className="flex shrink-0 items-center gap-2 text-xs font-medium text-zinc-400">
                 <span

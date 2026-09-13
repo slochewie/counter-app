@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { OrganizationSelector } from "@niteowl/ui";
 import { SearchIcon, UsersIcon } from "lucide-react";
 
 import { Badge } from "#/components/ui/badge.tsx";
@@ -381,10 +380,6 @@ function CounterAssignments() {
     );
   }
 
-  const organizationList = organizations ?? [];
-  const organizationsPending =
-    areOrganizationsPending || isActiveOrganizationPending;
-
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 md:p-6 lg:p-8">
       <div className="flex items-start gap-3">
@@ -398,16 +393,6 @@ function CounterAssignments() {
           </p>
         </div>
       </div>
-
-      <OrganizationSelector
-        organizations={organizationList}
-        value={activeOrganization?.id}
-        loading={organizationsPending}
-        description="Counter access and Counter Managers are stored separately for each organization."
-        onValueChange={(organizationId) => {
-          void authClient.organization.setActive({ organizationId });
-        }}
-      />
 
       <Card>
         <CardHeader>

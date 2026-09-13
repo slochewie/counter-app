@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { OrganizationSelector } from "@niteowl/ui";
 import { ChevronDown, GaugeIcon } from "lucide-react";
 
 import { Button } from "#/components/ui/button.tsx";
@@ -35,8 +34,7 @@ function CounterSessionSkeleton() {
         </div>
         <Card className="overflow-hidden border-zinc-800 bg-zinc-900 text-zinc-50 shadow-2xl shadow-black/20">
           <CardHeader className="border-b border-zinc-800 px-4 py-2.5 sm:px-6 sm:py-4">
-            <div className="flex items-center justify-between gap-4">
-              <Skeleton className="h-9 w-52 bg-zinc-800 sm:w-64" />
+            <div className="flex items-center justify-end gap-4">
               <Skeleton className="h-4 w-20 bg-zinc-800" />
             </div>
           </CardHeader>
@@ -91,9 +89,6 @@ function CounterApp() {
   const mqttLocationId = counterAccessState === "allowed" ? locationId : null;
   const { count, status, updatedAt, updatedBy, sendCommand } =
     useCounterMqtt(mqttLocationId, actor);
-  const organizationList = organizations ?? [];
-  const organizationsPending =
-    areOrganizationsPending || isActiveOrganizationPending;
 
   useEffect(() => {
     if (isPending || session) {
@@ -218,19 +213,7 @@ function CounterApp() {
         </div>
         <Card className="overflow-hidden border-zinc-800 bg-zinc-900 text-zinc-50 shadow-2xl shadow-black/20">
           <CardHeader className="border-b border-zinc-800 px-4 py-2.5 sm:px-6 sm:py-4">
-            <div className="flex items-center justify-between gap-4">
-              <OrganizationSelector
-                variant="compact"
-                organizations={organizationList}
-                value={activeOrganization?.id}
-                loading={organizationsPending}
-                className="w-52 min-w-0 sm:w-64"
-                selectClassName="border-zinc-700 bg-zinc-950/50 text-zinc-100"
-                onValueChange={(organizationId) => {
-                  void authClient.organization.setActive({ organizationId });
-                }}
-              />
-
+            <div className="flex items-center justify-end gap-4">
               <div className="flex shrink-0 items-center gap-2 text-xs font-medium text-zinc-400">
                 <span
                   className={`h-2.5 w-2.5 rounded-full ${

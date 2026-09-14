@@ -113,7 +113,7 @@ struct CounterWidgetEntryView: View {
     }
 
     private func small(_ snapshot: CounterSnapshot) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 6) {
             Text(snapshot.organizationName)
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -122,16 +122,12 @@ struct CounterWidgetEntryView: View {
             Spacer(minLength: 0)
 
             Text(snapshot.count.formatted())
-                .font(.system(size: 54, weight: .bold, design: .rounded))
+                .font(.system(size: 58, weight: .bold, design: .rounded))
                 .monospacedDigit()
                 .minimumScaleFactor(0.6)
                 .lineLimit(1)
 
             Spacer(minLength: 0)
-
-            Text("Counter")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
         }
         .foregroundStyle(.white)
     }

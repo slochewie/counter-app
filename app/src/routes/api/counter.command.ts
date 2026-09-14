@@ -50,8 +50,12 @@ export const Route = createFileRoute("/api/counter/command")({
           return jsonError("organizationId and counterId are required", 400);
         }
 
-        if (action !== "increment" && action !== "decrement") {
-          return jsonError("action must be increment or decrement", 400);
+        if (
+          action !== "increment" &&
+          action !== "decrement" &&
+          action !== "reset"
+        ) {
+          return jsonError("action must be increment, decrement, or reset", 400);
         }
 
         const allowed = await userCanAccessCounter(

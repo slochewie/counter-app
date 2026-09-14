@@ -1,6 +1,6 @@
 import mqtt, { type MqttClient } from "mqtt";
 
-export type CounterCommand = "increment" | "decrement";
+export type CounterCommand = "increment" | "decrement" | "reset";
 
 export type CounterState = {
   count: number;

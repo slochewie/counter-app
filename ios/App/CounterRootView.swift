@@ -142,7 +142,7 @@ struct CounterRootView: View {
                     }
                     .disabled(model.busy)
 
-                    Text(resetPressed ? "Keep Holding…" : "Hold Reset")
+                    Text(resetPressed ? "Keep Holding…" : "Reset")
                         .font(.headline)
                         .foregroundStyle(Color(red: 1.0, green: 0.38, blue: 0.38))
                         .frame(maxWidth: .infinity, minHeight: 50)

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct CounterRootView: View {
     @ObservedObject var model: CounterAppModel
+    @GestureState private var resetPressed = false
 
     var body: some View {
         NavigationStack {
@@ -12,8 +13,13 @@ struct CounterRootView: View {
                     signInView
                 }
             }
-            .navigationTitle("Counter")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("Capacity Counter")
+                        .font(.title2.bold())
+                }
+
                 if model.signedIn {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button("Sign Out") {
@@ -81,7 +87,7 @@ struct CounterRootView: View {
     private var signedInView: some View {
         List {
             if model.selections.count > 1 {
-                Section("Counter") {
+                Section {
                     Picker("Counter", selection: selectedBinding) {
                         Text("Select a counter")
                             .tag(Optional<CounterSelection>.none)
@@ -105,28 +111,65 @@ struct CounterRootView: View {
                     }
                     .padding(.vertical, 16)
 
-                    HStack(spacing: 20) {
+                    HStack(spacing: 12) {
                         Button {
                             Task {
                                 await model.send(.decrement)
                             }
                         } label: {
-                            Label("Decrease", systemImage: "minus")
-                                .frame(maxWidth: .infinity)
+                            Text("−1")
+                                .font(.system(size: 34, weight: .bold, design: .rounded))
+                                .foregroundStyle(Color.black)
+                                .frame(maxWidth: .infinity, minHeight: 76)
+                                .background(Color(red: 245 / 255, green: 206 / 255, blue: 69 / 255))
+                                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                         }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(.plain)
 
                         Button {
                             Task {
                                 await model.send(.increment)
                             }
                         } label: {
-                            Label("Increase", systemImage: "plus")
-                                .frame(maxWidth: .infinity)
+                            Text("+1")
+                                .font(.system(size: 34, weight: .bold, design: .rounded))
+                                .foregroundStyle(Color.white)
+                                .frame(maxWidth: .infinity, minHeight: 76)
+                                .background(Color(red: 80 / 255, green: 117 / 255, blue: 187 / 255))
+                                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                         }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(.plain)
                     }
                     .disabled(model.busy)
+
+                    Text(resetPressed ? "Keep Holding…" : "Hold Reset")
+                        .font(.headline)
+                        .foregroundStyle(Color(red: 1.0, green: 0.38, blue: 0.38))
+                        .frame(maxWidth: .infinity, minHeight: 50)
+                        .background(
+                            resetPressed
+                                ? Color(red: 0.25, green: 0.10, blue: 0.11)
+                                : Color(red: 0.34, green: 0.16, blue: 0.17)
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .contentShape(Rectangle())
+                        .opacity(model.busy ? 0.45 : 1)
+                        .gesture(
+                            LongPressGesture(minimumDuration: 0.8)
+                                .updating($resetPressed) { current, state, _ in
+                                    state = current
+                                }
+                                .onEnded { _ in
+                                    guard !model.busy else {
+                                        return
+                                    }
+
+                                    Task {
+                                        await model.send(.reset)
+                                    }
+                                }
+                        )
+                        .accessibilityLabel("Hold to reset Counter")
 
                     Button("Refresh") {
                         Task {

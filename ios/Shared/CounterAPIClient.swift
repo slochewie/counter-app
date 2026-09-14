@@ -115,6 +115,7 @@ actor CounterAPIClient {
 enum CounterCommand: String, Codable, Sendable {
     case increment
     case decrement
+    case reset
 }
 
 private struct CounterCommandRequest: Encodable {

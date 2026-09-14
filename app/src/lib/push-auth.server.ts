@@ -89,17 +89,25 @@ function scopeIncludes(scope: string | undefined, required: string) {
   return scope?.split(/\s+/).includes(required) ?? false;
 }
 
+function rejectJwt(reason: string, details: Record<string, unknown> = {}) {
+  console.warn("[counter-auth] JWT rejected", {
+    reason,
+    ...details,
+  });
+  return null;
+}
+
 async function verifyJwt(request: Request): Promise<VerifiedCounterToken | null> {
   const token = bearerToken(request);
 
   if (!token) {
-    return null;
+    return rejectJwt("missing_bearer_token");
   }
 
   const parts = token.split(".");
 
   if (parts.length !== 3) {
-    return null;
+    return rejectJwt("not_jwt", { partCount: parts.length });
   }
 
   let header: JwtHeader;
@@ -109,11 +117,14 @@ async function verifyJwt(request: Request): Promise<VerifiedCounterToken | null>
     header = decodeBase64UrlJson<JwtHeader>(parts[0]);
     payload = decodeBase64UrlJson<JwtPayload>(parts[1]);
   } catch {
-    return null;
+    return rejectJwt("decode_failed");
   }
 
   if (header.alg !== "EdDSA" || !header.kid) {
-    return null;
+    return rejectJwt("unsupported_header", {
+      alg: header.alg,
+      hasKid: Boolean(header.kid),
+    });
   }
 
   const authBaseUrl = getAuthBaseUrl(request);
@@ -123,35 +134,48 @@ async function verifyJwt(request: Request): Promise<VerifiedCounterToken | null>
   const resourceAudience = audienceIncludes(payload.aud, counterResourceUrl);
   const validIssuer = payload.iss === authBaseUrl || payload.iss === oauthIssuer;
 
-  if (
-    !validIssuer ||
-    (!browserAudience && !resourceAudience) ||
-    typeof payload.sub !== "string" ||
-    payload.sub.length === 0
-  ) {
-    return null;
+  if (!validIssuer) {
+    return rejectJwt("issuer_mismatch", {
+      issuer: payload.iss,
+      expectedIssuers: [authBaseUrl, oauthIssuer],
+    });
+  }
+
+  if (!browserAudience && !resourceAudience) {
+    return rejectJwt("audience_mismatch", {
+      audience: payload.aud,
+      expectedAudiences: [authBaseUrl, counterResourceUrl],
+    });
+  }
+
+  if (typeof payload.sub !== "string" || payload.sub.length === 0) {
+    return rejectJwt("missing_subject");
   }
 
   const now = Math.floor(Date.now() / 1000);
 
-  if (
-    (typeof payload.exp === "number" && payload.exp <= now) ||
-    (typeof payload.nbf === "number" && payload.nbf > now)
-  ) {
-    return null;
+  if (typeof payload.exp === "number" && payload.exp <= now) {
+    return rejectJwt("expired", { exp: payload.exp, now });
+  }
+
+  if (typeof payload.nbf === "number" && payload.nbf > now) {
+    return rejectJwt("not_yet_valid", { nbf: payload.nbf, now });
   }
 
   const jwksResponse = await fetch(`${authBaseUrl}/api/auth/jwks`);
 
   if (!jwksResponse.ok) {
-    return null;
+    return rejectJwt("jwks_fetch_failed", { status: jwksResponse.status });
   }
 
   const jwks = (await jwksResponse.json()) as JwksResponse;
   const jwk = jwks.keys?.find((candidate) => candidate.kid === header.kid);
 
   if (!jwk) {
-    return null;
+    return rejectJwt("signing_key_not_found", {
+      kid: header.kid,
+      availableKids: jwks.keys?.map((candidate) => candidate.kid) ?? [],
+    });
   }
 
   try {
@@ -169,15 +193,19 @@ async function verifyJwt(request: Request): Promise<VerifiedCounterToken | null>
       new TextEncoder().encode(`${parts[0]}.${parts[1]}`),
     );
 
-    return verified
-      ? {
-          payload,
-          authBaseUrl,
-          resourceAudience,
-        }
-      : null;
-  } catch {
-    return null;
+    if (!verified) {
+      return rejectJwt("signature_invalid", { kid: header.kid });
+    }
+
+    return {
+      payload,
+      authBaseUrl,
+      resourceAudience,
+    };
+  } catch (error) {
+    return rejectJwt("signature_verification_failed", {
+      message: error instanceof Error ? error.message : String(error),
+    });
   }
 }
 

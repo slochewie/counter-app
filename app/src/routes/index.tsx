@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { ChevronDown, GaugeIcon } from "lucide-react";
 
+import { PushNotifications } from "#/components/push-notifications.tsx";
 import { Button } from "#/components/ui/button.tsx";
 import {
   Card,
@@ -330,6 +331,18 @@ function CounterApp() {
                       <dd className="text-right text-zinc-300">
                         {updatedBy ?? "—"}
                       </dd>
+
+                      {activeOrganization && locationId ? (
+                        <>
+                          <dt className="pt-1 text-zinc-500">Notifications</dt>
+                          <dd className="pt-1">
+                            <PushNotifications
+                              organizationId={activeOrganization.id}
+                              counterId={locationId}
+                            />
+                          </dd>
+                        </>
+                      ) : null}
                     </dl>
                   ) : null}
                 </div>

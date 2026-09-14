@@ -32,12 +32,11 @@ targets:
         UILaunchScreen: {}
     entitlements:
       path: App/NiteOwlCounter.entitlements
-    attributes:
-      SystemCapabilities:
-        com.apple.ApplicationGroups.iOS:
-          enabled: 1
-        com.apple.Keychain:
-          enabled: 1
+      properties:
+        com.apple.security.application-groups:
+          - group.dev.niteowl.counter
+        keychain-access-groups:
+          - $(AppIdentifierPrefix)dev.niteowl.counter.shared
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.niteowl.counter
@@ -62,12 +61,11 @@ targets:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     entitlements:
       path: Widget/CounterWidget.entitlements
-    attributes:
-      SystemCapabilities:
-        com.apple.ApplicationGroups.iOS:
-          enabled: 1
-        com.apple.Keychain:
-          enabled: 1
+      properties:
+        com.apple.security.application-groups:
+          - group.dev.niteowl.counter
+        keychain-access-groups:
+          - $(AppIdentifierPrefix)dev.niteowl.counter.shared
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.niteowl.counter.widget

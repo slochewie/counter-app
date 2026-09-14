@@ -44,6 +44,10 @@ function subscriptionPayload(subscription: PushSubscription) {
   };
 }
 
+function isIosDevice() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent);
+}
+
 async function pushAuthorizationHeader() {
   const { data, error } = await authClient.token();
 
@@ -263,7 +267,9 @@ export function PushNotifications({
   if (state === "unsupported") {
     return (
       <div className="text-right text-zinc-500">
-        Add Counter to the iPhone Home Screen to enable push notifications.
+        {isIosDevice()
+          ? "Add Counter to the iPhone Home Screen to enable push notifications."
+          : "Push notifications are not supported by this browser or device."}
       </div>
     );
   }
@@ -271,7 +277,7 @@ export function PushNotifications({
   if (state === "denied") {
     return (
       <div className="text-right text-zinc-500">
-        Notifications are blocked in iPhone settings.
+        Notifications are blocked in your browser or device settings.
       </div>
     );
   }

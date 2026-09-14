@@ -85,6 +85,22 @@ final class CounterAppModel: ObservableObject {
         }
     }
 
+    func refreshSilently() async {
+        guard !busy, let selection = selected else {
+            return
+        }
+
+        do {
+            let value = try await CounterRuntime
+                .apiClient(for: selection.environment)
+                .state(for: selection)
+            snapshot = value
+            WidgetCenter.shared.reloadAllTimelines()
+        } catch {
+            // Automatic foreground refreshes should not interrupt the user.
+        }
+    }
+
     func send(_ command: CounterCommand) async {
         guard let selection = selected else {
             return

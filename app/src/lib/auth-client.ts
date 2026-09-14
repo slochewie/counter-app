@@ -1,4 +1,5 @@
 import {
+  jwtClient,
   multiSessionClient,
   organizationClient,
 } from "better-auth/client/plugins";
@@ -28,6 +29,7 @@ export const authBaseURL = getAuthBaseURL();
 export const authClient = createAuthClient({
   baseURL: authBaseURL,
   plugins: [
+    jwtClient(),
     multiSessionClient(),
     organizationClient({
       teams: {

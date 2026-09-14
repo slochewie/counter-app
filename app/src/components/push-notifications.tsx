@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { BellIcon, BellOffIcon, SendIcon } from "lucide-react";
 
 import { Button } from "#/components/ui/button.tsx";
+import { authClient } from "#/lib/auth-client.ts";
 
 type PushNotificationsProps = {
   organizationId: string;
@@ -39,6 +40,16 @@ function subscriptionPayload(subscription: PushSubscription) {
       auth: json.keys?.auth,
     },
   };
+}
+
+async function pushAuthorizationHeader() {
+  const { data, error } = await authClient.token();
+
+  if (error || !data?.token) {
+    throw new Error(error?.message ?? "Unable to authenticate this Counter request.");
+  }
+
+  return `Bearer ${data.token}`;
 }
 
 export function PushNotifications({
@@ -124,9 +135,11 @@ export function PushNotifications({
         });
       }
 
+      const authorization = await pushAuthorizationHeader();
       const response = await fetch("/api/push", {
         method: "POST",
         headers: {
+          authorization,
           "content-type": "application/json",
         },
         body: JSON.stringify({
@@ -163,15 +176,22 @@ export function PushNotifications({
       const subscription = await registration.pushManager.getSubscription();
 
       if (subscription) {
-        await fetch("/api/push", {
+        const authorization = await pushAuthorizationHeader();
+        const response = await fetch("/api/push", {
           method: "DELETE",
           headers: {
+            authorization,
             "content-type": "application/json",
           },
           body: JSON.stringify({
             endpoint: subscription.endpoint,
           }),
         });
+
+        if (!response.ok) {
+          const result = (await response.json()) as { error?: string };
+          throw new Error(result.error ?? "Unable to remove push subscription.");
+        }
 
         await subscription.unsubscribe();
       }
@@ -193,9 +213,11 @@ export function PushNotifications({
     setMessage(null);
 
     try {
+      const authorization = await pushAuthorizationHeader();
       const response = await fetch("/api/push/test", {
         method: "POST",
         headers: {
+          authorization,
           "content-type": "application/json",
         },
         body: JSON.stringify({

@@ -5,6 +5,7 @@ import {
 } from '@tanstack/react-router'
 
 import { AppChrome } from '../components/app-chrome'
+import { PwaBootstrap } from '../components/pwa-bootstrap'
 
 import appCss from '../styles.css?url'
 
@@ -38,7 +39,23 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       },
       {
         name: 'viewport',
-        content: 'width=device-width, initial-scale=1',
+        content: 'width=device-width, initial-scale=1, viewport-fit=cover',
+      },
+      {
+        name: 'theme-color',
+        content: '#09090b',
+      },
+      {
+        name: 'apple-mobile-web-app-capable',
+        content: 'yes',
+      },
+      {
+        name: 'apple-mobile-web-app-status-bar-style',
+        content: 'black-translucent',
+      },
+      {
+        name: 'apple-mobile-web-app-title',
+        content: 'Counter',
       },
       {
         title: 'NiteOwl.dev Counter',
@@ -48,6 +65,15 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       {
         rel: 'stylesheet',
         href: appCss,
+      },
+      {
+        rel: 'manifest',
+        href: '/manifest.webmanifest',
+      },
+      {
+        rel: 'icon',
+        href: '/counter-icon.svg',
+        type: 'image/svg+xml',
       },
     ],
   }),
@@ -62,6 +88,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
+        <PwaBootstrap />
         <AppChrome>{children}</AppChrome>
         <Scripts />
       </body>

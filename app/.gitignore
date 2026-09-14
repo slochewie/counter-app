@@ -11,3 +11,6 @@ dist-ssr
 .vinxi
 __unconfig*
 todos.json
+data/*.sqlite
+data/*.sqlite-shm
+data/*.sqlite-wal

@@ -2,6 +2,16 @@ type CounterAccessResponse = {
   allowed?: boolean;
 };
 
+type AvailableCounter = {
+  organizationId: string;
+  organizationName: string;
+  counterId: string;
+};
+
+type AvailableCountersResponse = {
+  counters?: AvailableCounter[];
+};
+
 type JwtHeader = {
   alg?: string;
   kid?: string;
@@ -186,6 +196,36 @@ export async function hasCounterScope(request: Request, requiredScope: string) {
   }
 
   return scopeIncludes(verified.payload.scope, requiredScope);
+}
+
+export async function getAvailableCounters(request: Request) {
+  const userId = await getAuthenticatedUserId(request);
+
+  if (!userId) {
+    return null;
+  }
+
+  const internalSecret = process.env.COUNTER_AUTH_INTERNAL_SECRET?.trim();
+
+  if (!internalSecret) {
+    throw new Error("COUNTER_AUTH_INTERNAL_SECRET is not configured.");
+  }
+
+  const url = new URL(`${getAuthBaseUrl(request)}/api/auth/counter/available/internal`);
+  url.searchParams.set("userId", userId);
+
+  const response = await fetch(url, {
+    headers: {
+      "x-counter-internal-secret": internalSecret,
+    },
+  });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const result = (await response.json()) as AvailableCountersResponse;
+  return result.counters ?? [];
 }
 
 export async function userCanAccessCounter(

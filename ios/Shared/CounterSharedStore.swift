@@ -1,6 +1,6 @@
 import Foundation
 
-struct CounterSharedStore: Sendable {
+struct CounterSharedStore: @unchecked Sendable {
     static let appGroup = "group.dev.niteowl.counter"
 
     private let defaults: UserDefaults

@@ -39,9 +39,10 @@ final class CounterAuthenticationSession: NSObject, ASWebAuthenticationPresentat
 
         session = nil
         let components = URLComponents(url: callbackURL, resolvingAgainstBaseURL: false)
-        let values = Dictionary(
-            uniqueKeysWithValues: (components?.queryItems ?? []).map { ($0.name, $0.value ?? "") }
-        )
+        var values: [String: String] = [:]
+        for item in components?.queryItems ?? [] {
+            values[item.name] = item.value ?? ""
+        }
 
         if let error = values["error"] {
             throw CounterAuthenticationError.authorizationDenied(

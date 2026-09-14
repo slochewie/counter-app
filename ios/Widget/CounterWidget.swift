@@ -1,6 +1,8 @@
 import SwiftUI
 import WidgetKit
 
+let counterWidgetKind = "CounterWidget"
+
 struct CounterWidgetEntry: TimelineEntry {
     let date: Date
     let snapshot: CounterSnapshot?
@@ -167,10 +169,8 @@ struct CounterWidgetEntryView: View {
 }
 
 struct CounterWidget: Widget {
-    static let kind = "CounterWidget"
-
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: Self.kind, provider: CounterWidgetProvider()) { entry in
+        StaticConfiguration(kind: counterWidgetKind, provider: CounterWidgetProvider()) { entry in
             CounterWidgetEntryView(entry: entry)
         }
         .configurationDisplayName("Counter")

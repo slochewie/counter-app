@@ -36,10 +36,18 @@ struct CounterWidgetProvider: TimelineProvider {
     }
 
     private func loadEntry() async -> CounterWidgetEntry {
-        guard let store = CounterSharedStore(), let selection = store.selection() else {
+        guard let store = CounterSharedStore() else {
             return CounterWidgetEntry(
                 date: .now,
-                snapshot: store?.snapshot(),
+                snapshot: nil,
+                errorMessage: "Unable to access shared Counter data"
+            )
+        }
+
+        guard let selection = store.selection() else {
+            return CounterWidgetEntry(
+                date: .now,
+                snapshot: store.snapshot(),
                 errorMessage: "Open Counter to select a Counter"
             )
         }

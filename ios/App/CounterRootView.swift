@@ -195,6 +195,15 @@ struct CounterRootView: View {
         .refreshable {
             await model.refresh()
         }
+        .task(id: model.selected) {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(2))
+                guard !Task.isCancelled else {
+                    return
+                }
+                await model.refreshSilently()
+            }
+        }
     }
 
     private var selectedBinding: Binding<CounterSelection?> {

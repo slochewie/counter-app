@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BellIcon, BellOffIcon } from "lucide-react";
+import { BellIcon, BellOffIcon, SendIcon } from "lucide-react";
 
 import { Button } from "#/components/ui/button.tsx";
 
@@ -47,6 +47,7 @@ export function PushNotifications({
 }: PushNotificationsProps) {
   const [state, setState] = useState<PushState>("checking");
   const [message, setMessage] = useState<string | null>(null);
+  const [sendingTest, setSendingTest] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -187,6 +188,47 @@ export function PushNotifications({
     }
   }
 
+  async function sendTestNotification() {
+    setSendingTest(true);
+    setMessage(null);
+
+    try {
+      const response = await fetch("/api/push/test", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          organizationId,
+          counterId,
+        }),
+      });
+
+      const result = (await response.json()) as {
+        error?: string;
+        subscriptions?: number;
+        sent?: number;
+        failed?: number;
+      };
+
+      if (!response.ok) {
+        throw new Error(result.error ?? "Unable to send test notification.");
+      }
+
+      setMessage(
+        `Test sent to ${result.sent ?? 0} of ${result.subscriptions ?? 0} subscription${result.subscriptions === 1 ? "" : "s"}.`,
+      );
+    } catch (error: unknown) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Unable to send test notification.",
+      );
+    } finally {
+      setSendingTest(false);
+    }
+  }
+
   if (state === "unsupported") {
     return (
       <div className="text-right text-zinc-500">
@@ -208,28 +250,43 @@ export function PushNotifications({
 
   return (
     <div className="flex flex-col items-end gap-2">
-      <Button
-        type="button"
-        size="sm"
-        variant={enabled ? "outline" : "secondary"}
-        disabled={busy}
-        onClick={() => {
-          if (enabled) {
-            void disableNotifications();
-          } else {
-            void enableNotifications();
-          }
-        }}
-      >
-        {enabled ? <BellOffIcon /> : <BellIcon />}
-        {busy
-          ? "Checking…"
-          : enabled
-            ? "Disable notifications"
-            : "Enable notifications"}
-      </Button>
+      <div className="flex flex-wrap justify-end gap-2">
+        {enabled ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={busy || sendingTest}
+            onClick={() => void sendTestNotification()}
+          >
+            <SendIcon />
+            {sendingTest ? "Sending…" : "Send test notification"}
+          </Button>
+        ) : null}
+
+        <Button
+          type="button"
+          size="sm"
+          variant={enabled ? "outline" : "secondary"}
+          disabled={busy || sendingTest}
+          onClick={() => {
+            if (enabled) {
+              void disableNotifications();
+            } else {
+              void enableNotifications();
+            }
+          }}
+        >
+          {enabled ? <BellOffIcon /> : <BellIcon />}
+          {busy
+            ? "Checking…"
+            : enabled
+              ? "Disable notifications"
+              : "Enable notifications"}
+        </Button>
+      </div>
       {message ? (
-        <div className="max-w-64 text-right text-[11px] text-zinc-500">
+        <div className="max-w-80 text-right text-[11px] text-zinc-500">
           {message}
         </div>
       ) : null}

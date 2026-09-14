@@ -28,6 +28,8 @@ actor CounterAPIClient {
             )
         }
 
+        try sharedStore?.saveSelections(selections)
+
         if selections.count == 1, let selection = selections.first {
             try sharedStore?.saveSelection(selection)
         }
@@ -57,7 +59,7 @@ actor CounterAPIClient {
             count: response.count,
             updatedAt: .now
         )
-        try sharedStore?.saveSnapshot(snapshot)
+        try sharedStore?.saveSnapshot(snapshot, for: selection)
         return snapshot
     }
 
@@ -81,7 +83,7 @@ actor CounterAPIClient {
             count: response.count,
             updatedAt: .now
         )
-        try sharedStore?.saveSnapshot(snapshot)
+        try sharedStore?.saveSnapshot(snapshot, for: selection)
         return snapshot
     }
 

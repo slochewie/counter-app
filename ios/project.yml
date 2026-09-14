@@ -8,7 +8,6 @@ settings:
   base:
     SWIFT_VERSION: "6.0"
     CODE_SIGN_STYLE: Automatic
-    DEVELOPMENT_TEAM: 7H7WLQ79WU
     GENERATE_INFOPLIST_FILE: NO
 
 targets:

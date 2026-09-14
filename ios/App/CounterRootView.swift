@@ -171,11 +171,14 @@ struct CounterRootView: View {
                         )
                         .accessibilityLabel("Hold to reset Counter")
 
-                    Button("Refresh") {
+                    Button {
                         Task {
                             await model.refresh()
                         }
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
                     }
+                    .accessibilityLabel("Refresh")
                     .disabled(model.busy)
                 }
             } else if model.selections.isEmpty {

@@ -31,6 +31,14 @@ const themeInitScript = `
 })()
 `
 
+const standaloneSafeAreaCss = `
+@media (display-mode: standalone) {
+  body {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+`
+
 export const Route = createRootRouteWithContext<MyRouterContext>()({
   head: () => ({
     meta: [
@@ -85,6 +93,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <style dangerouslySetInnerHTML={{ __html: standaloneSafeAreaCss }} />
         <HeadContent />
       </head>
       <body>

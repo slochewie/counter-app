@@ -30,7 +30,7 @@ private func performCounterCommand(_ command: CounterCommand) async throws {
 
     let api = CounterRuntime.apiClient(for: selection.environment)
     _ = try await api.send(command, for: selection)
-    WidgetCenter.shared.reloadTimelines(ofKind: CounterWidget.kind)
+    WidgetCenter.shared.reloadTimelines(ofKind: counterWidgetKind)
 }
 
 enum CounterWidgetIntentError: Error, LocalizedError {

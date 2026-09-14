@@ -1,3 +1,4 @@
+import AppIntents
 import SwiftUI
 import WidgetKit
 
@@ -5,14 +6,22 @@ let counterWidgetKind = "CounterWidget"
 
 struct CounterWidgetEntry: TimelineEntry {
     let date: Date
+    let selection: CounterSelection?
     let snapshot: CounterSnapshot?
     let errorMessage: String?
 }
 
-struct CounterWidgetProvider: TimelineProvider {
+struct CounterWidgetProvider: AppIntentTimelineProvider {
     func placeholder(in context: Context) -> CounterWidgetEntry {
-        CounterWidgetEntry(
+        let selection = CounterSelection(
+            organizationID: "preview",
+            organizationName: "NiteOwl",
+            counterID: "preview",
+            environment: .niteOwl
+        )
+        return CounterWidgetEntry(
             date: .now,
+            selection: selection,
             snapshot: CounterSnapshot(
                 organizationID: "preview",
                 counterID: "preview",
@@ -24,23 +33,61 @@ struct CounterWidgetProvider: TimelineProvider {
         )
     }
 
-    func getSnapshot(in context: Context, completion: @escaping (CounterWidgetEntry) -> Void) {
-        let cached = CounterSharedStore()?.snapshot()
-        completion(CounterWidgetEntry(date: .now, snapshot: cached, errorMessage: nil))
+    func snapshot(
+        for configuration: CounterWidgetConfigurationIntent,
+        in context: Context
+    ) async -> CounterWidgetEntry {
+        entry(for: configuration, fetchLive: false)
     }
 
-    func getTimeline(in context: Context, completion: @escaping (Timeline<CounterWidgetEntry>) -> Void) {
-        let store = CounterSharedStore()
-        let snapshot = store?.snapshot()
-        let hasSelection = store?.selection() != nil
-        let errorMessage = hasSelection ? nil : "Open Counter to select a Counter"
-        let entry = CounterWidgetEntry(
-            date: .now,
-            snapshot: snapshot,
-            errorMessage: errorMessage
-        )
+    func timeline(
+        for configuration: CounterWidgetConfigurationIntent,
+        in context: Context
+    ) async -> Timeline<CounterWidgetEntry> {
+        let entry = await entry(for: configuration, fetchLive: true)
         let nextRefresh = Date.now.addingTimeInterval(15 * 60)
-        completion(Timeline(entries: [entry], policy: .after(nextRefresh)))
+        return Timeline(entries: [entry], policy: .after(nextRefresh))
+    }
+
+    private func entry(
+        for configuration: CounterWidgetConfigurationIntent,
+        fetchLive: Bool
+    ) async -> CounterWidgetEntry {
+        let store = CounterSharedStore()
+        let selection = configuration.counter?.selection ?? store?.selection()
+
+        guard let selection else {
+            return CounterWidgetEntry(
+                date: .now,
+                selection: nil,
+                snapshot: nil,
+                errorMessage: "Open Counter to select a Counter"
+            )
+        }
+
+        if fetchLive {
+            do {
+                let snapshot = try await CounterRuntime
+                    .apiClient(for: selection.environment)
+                    .state(for: selection)
+                return CounterWidgetEntry(
+                    date: .now,
+                    selection: selection,
+                    snapshot: snapshot,
+                    errorMessage: nil
+                )
+            } catch {
+                // Fall back to the last cached value so a temporary network/auth
+                // failure does not blank an otherwise useful widget.
+            }
+        }
+
+        return CounterWidgetEntry(
+            date: .now,
+            selection: selection,
+            snapshot: store?.snapshot(for: selection),
+            errorMessage: nil
+        )
     }
 }
 
@@ -107,7 +154,7 @@ struct CounterWidgetEntryView: View {
             Spacer(minLength: 0)
 
             HStack(spacing: 10) {
-                Button(intent: DecrementCounterIntent()) {
+                Button(intent: DecrementCounterIntent(counter: configuredCounter)) {
                     Image(systemName: "minus")
                         .font(.title2.bold())
                         .frame(width: 48, height: 48)
@@ -116,7 +163,7 @@ struct CounterWidgetEntryView: View {
                 .foregroundStyle(.black)
                 .background(.yellow, in: Circle())
 
-                Button(intent: IncrementCounterIntent()) {
+                Button(intent: IncrementCounterIntent(counter: configuredCounter)) {
                     Image(systemName: "plus")
                         .font(.title2.bold())
                         .frame(width: 48, height: 48)
@@ -129,13 +176,17 @@ struct CounterWidgetEntryView: View {
         .foregroundStyle(.white)
     }
 
+    private var configuredCounter: CounterWidgetEntity? {
+        entry.selection.map(CounterWidgetEntity.init(selection:))
+    }
+
     private var unavailable: some View {
         VStack(alignment: .leading, spacing: 8) {
             Image(systemName: "person.crop.circle.badge.exclamationmark")
                 .font(.title2)
             Text("Open Counter")
                 .font(.headline)
-            Text(entry.errorMessage ?? "Sign in and select a Counter.")
+            Text(entry.errorMessage ?? "Sign in and choose a Counter for this widget.")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
                 .lineLimit(3)
@@ -146,11 +197,15 @@ struct CounterWidgetEntryView: View {
 
 struct CounterWidget: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: counterWidgetKind, provider: CounterWidgetProvider()) { entry in
+        AppIntentConfiguration(
+            kind: counterWidgetKind,
+            intent: CounterWidgetConfigurationIntent.self,
+            provider: CounterWidgetProvider()
+        ) { entry in
             CounterWidgetEntryView(entry: entry)
         }
         .configurationDisplayName("Counter")
-        .description("See and update the selected NiteOwl Counter.")
+        .description("Choose a NiteOwl Counter to monitor or control.")
         .supportedFamilies([.systemSmall, .systemMedium])
     }
 }

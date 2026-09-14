@@ -3,10 +3,6 @@ import { BellIcon, BellOffIcon, SendIcon } from "lucide-react";
 
 import { Button } from "#/components/ui/button.tsx";
 import { authClient } from "#/lib/auth-client.ts";
-import {
-  getCounterState,
-  sendCounterCommand,
-} from "#/lib/counter-api.ts";
 
 type PushNotificationsProps = {
   organizationId: string;
@@ -71,7 +67,6 @@ export function PushNotifications({
   const [state, setState] = useState<PushState>("checking");
   const [message, setMessage] = useState<string | null>(null);
   const [sendingCount, setSendingCount] = useState(false);
-  const [testingWidgetApi, setTestingWidgetApi] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -269,35 +264,6 @@ export function PushNotifications({
     }
   }
 
-  async function testWidgetApi() {
-    setTestingWidgetApi(true);
-    setMessage(null);
-
-    try {
-      const initial = await getCounterState(organizationId, counterId);
-      const decremented = await sendCounterCommand(
-        organizationId,
-        counterId,
-        "decrement",
-      );
-      const incremented = await sendCounterCommand(
-        organizationId,
-        counterId,
-        "increment",
-      );
-
-      setMessage(
-        `Widget API passed: ${initial.count} → ${decremented.count} → ${incremented.count}.`,
-      );
-    } catch (error: unknown) {
-      setMessage(
-        error instanceof Error ? error.message : "Widget API test failed.",
-      );
-    } finally {
-      setTestingWidgetApi(false);
-    }
-  }
-
   if (state === "unsupported") {
     return (
       <div className="text-right text-zinc-500">
@@ -322,22 +288,12 @@ export function PushNotifications({
   return (
     <div className="flex flex-col items-end gap-2">
       <div className="flex flex-wrap justify-end gap-2">
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          disabled={busy || sendingCount || testingWidgetApi}
-          onClick={() => void testWidgetApi()}
-        >
-          {testingWidgetApi ? "Testing…" : "Test Widget API"}
-        </Button>
-
         {enabled ? (
           <Button
             type="button"
             size="sm"
             variant="outline"
-            disabled={busy || sendingCount || testingWidgetApi || count === null}
+            disabled={busy || sendingCount || count === null}
             onClick={() => void sendCount()}
           >
             <SendIcon />
@@ -349,7 +305,7 @@ export function PushNotifications({
           type="button"
           size="sm"
           variant={enabled ? "outline" : "secondary"}
-          disabled={busy || sendingCount || testingWidgetApi}
+          disabled={busy || sendingCount}
           onClick={() => {
             if (enabled) {
               void disableNotifications();

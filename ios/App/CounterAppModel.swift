@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 import WidgetKit
 
 @MainActor
@@ -104,12 +105,12 @@ final class CounterAppModel: ObservableObject {
         }
     }
 
-    func signOut() {
+    func signOut() async {
         if let environment = selected?.environment {
-            try? CounterRuntime.oauthClient(for: environment).signOut()
+            try? await CounterRuntime.oauthClient(for: environment).signOut()
         } else {
             for environment in CounterEnvironment.allCases {
-                try? CounterRuntime.oauthClient(for: environment).signOut()
+                try? await CounterRuntime.oauthClient(for: environment).signOut()
             }
         }
 

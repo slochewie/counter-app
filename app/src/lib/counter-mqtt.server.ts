@@ -83,6 +83,7 @@ function waitForCounterState(
   client: MqttClient,
   counterId: string,
   publish: () => void,
+  options: { ignoreRetained?: boolean } = {},
 ) {
   const stateTopic = `counters/${counterId}/capacity/state`;
 
@@ -106,8 +107,15 @@ function waitForCounterState(
       }
     };
 
-    const onMessage = (topic: string, message: Buffer) => {
-      if (topic !== stateTopic) {
+    const onMessage = (
+      topic: string,
+      message: Buffer,
+      packet: { retain?: boolean },
+    ) => {
+      if (
+        topic !== stateTopic ||
+        (options.ignoreRetained === true && packet.retain === true)
+      ) {
         return;
       }
 
@@ -188,16 +196,21 @@ export async function sendCounterCommand(
   const client = await connectCounterClient();
   const commandTopic = `counters/${counterId}/capacity/command`;
 
-  return waitForCounterState(client, counterId, () => {
-    client.publish(
-      commandTopic,
-      JSON.stringify({
-        action,
-        source: "counter_api",
-        updated_by: "Counter widget",
-        updated_by_id: actorId,
-        location: counterId,
-      }),
-    );
-  });
+  return waitForCounterState(
+    client,
+    counterId,
+    () => {
+      client.publish(
+        commandTopic,
+        JSON.stringify({
+          action,
+          source: "counter_api",
+          updated_by: "Counter widget",
+          updated_by_id: actorId,
+          location: counterId,
+        }),
+      );
+    },
+    { ignoreRetained: true },
+  );
 }

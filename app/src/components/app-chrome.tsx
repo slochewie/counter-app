@@ -51,6 +51,7 @@ import {
   SidebarProvider,
   SidebarSeparator,
   SidebarTrigger,
+  useSidebar,
 } from "#/components/ui/sidebar.tsx"
 import { TooltipProvider } from "#/components/ui/tooltip.tsx"
 import { authClient } from "#/lib/auth-client.ts"
@@ -82,6 +83,25 @@ const sidebarButtonClassName =
   "text-base [&>svg]:size-5 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-2"
 const sidebarLabelClassName =
   "truncate group-data-[collapsible=icon]:hidden"
+
+function SidebarIdentityToggle({
+  href,
+  brand,
+}: {
+  href: string
+  brand: string
+}) {
+  const { toggleSidebar } = useSidebar()
+
+  return (
+    <AppSidebarIdentity
+      href={href}
+      brand={brand}
+      appName={COUNTER_APP.label}
+      onToggle={toggleSidebar}
+    />
+  )
+}
 
 export function AppChrome({ children }: { children: ReactNode }) {
   const location = useLocation()
@@ -145,18 +165,17 @@ export function AppChrome({ children }: { children: ReactNode }) {
     : null
   const primarySection = navigation?.primary[0]
   const appsSection = navigation?.apps[0]
+  const currentHref = appLinks
+    ? `${appLinks.counter.replace(/\/$/, "")}${location.pathname}`
+    : null
 
   return (
     <TooltipProvider>
       <SidebarProvider defaultOpen={sidebarDefaultOpen}>
         <Sidebar collapsible="icon">
           <SidebarHeader>
-            {appLinks && brand ? (
-              <AppSidebarIdentity
-                href={appLinks.counter}
-                brand={brand}
-                appName={COUNTER_APP.label}
-              />
+            {currentHref && brand ? (
+              <SidebarIdentityToggle href={currentHref} brand={brand} />
             ) : (
               <div className="h-12" aria-hidden="true" />
             )}

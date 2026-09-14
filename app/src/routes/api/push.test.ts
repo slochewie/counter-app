@@ -6,9 +6,11 @@ import {
 } from "#/lib/push-auth.server.ts";
 import { sendPushToCounter } from "#/lib/push-send.server.ts";
 
-type PushTestBody = {
+type PushCountBody = {
   organizationId?: string;
+  organizationName?: string;
   counterId?: string;
+  count?: number;
 };
 
 function jsonError(message: string, status: number) {
@@ -25,19 +27,28 @@ export const Route = createFileRoute("/api/push/test")({
           return jsonError("Unauthorized", 401);
         }
 
-        let body: PushTestBody;
+        let body: PushCountBody;
 
         try {
-          body = (await request.json()) as PushTestBody;
+          body = (await request.json()) as PushCountBody;
         } catch {
           return jsonError("Invalid JSON body", 400);
         }
 
         const organizationId = body.organizationId?.trim();
+        const organizationName = body.organizationName?.trim();
         const counterId = body.counterId?.trim();
+        const count = body.count;
 
-        if (!organizationId || !counterId) {
-          return jsonError("organizationId and counterId are required", 400);
+        if (!organizationId || !organizationName || !counterId) {
+          return jsonError(
+            "organizationId, organizationName, and counterId are required",
+            400,
+          );
+        }
+
+        if (typeof count !== "number" || !Number.isInteger(count)) {
+          return jsonError("count must be an integer", 400);
         }
 
         const allowed = await userCanAccessCounter(
@@ -52,16 +63,16 @@ export const Route = createFileRoute("/api/push/test")({
 
         try {
           const result = await sendPushToCounter(organizationId, counterId, {
-            title: "Counter notifications are working",
-            body: "This is a test notification from NiteOwl.dev Counter.",
+            title: organizationName,
+            body: `Current count: ${count}`,
             url: "/",
-            tag: `counter-test-${counterId}`,
+            tag: `counter-count-${counterId}`,
           });
 
           return Response.json(result);
         } catch (error: unknown) {
           return jsonError(
-            error instanceof Error ? error.message : "Unable to send test push",
+            error instanceof Error ? error.message : "Unable to send current count",
             500,
           );
         }

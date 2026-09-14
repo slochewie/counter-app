@@ -15,6 +15,26 @@ actor CounterAPIClient {
         self.sharedStore = sharedStore
     }
 
+    func availableCounters(in environment: CounterEnvironment) async throws -> [CounterSelection] {
+        let configuration = environment.oauthConfiguration
+        let url = configuration.counterBaseURL.appending(path: "api/counter/available")
+        let response: AvailableCountersResponse = try await request(url: url, method: "GET")
+        let selections = response.counters.map {
+            CounterSelection(
+                organizationID: $0.organizationId,
+                organizationName: $0.organizationName,
+                counterID: $0.counterId,
+                environment: environment
+            )
+        }
+
+        if selections.count == 1, let selection = selections.first {
+            try sharedStore?.saveSelection(selection)
+        }
+
+        return selections
+    }
+
     func state(for selection: CounterSelection) async throws -> CounterSnapshot {
         let configuration = selection.environment.oauthConfiguration
         var components = URLComponents(
@@ -105,6 +125,16 @@ private struct CounterCommandRequest: Encodable {
 
 private struct CounterStateResponse: Decodable {
     let count: Int
+}
+
+private struct AvailableCountersResponse: Decodable {
+    let counters: [AvailableCounterResponse]
+}
+
+private struct AvailableCounterResponse: Decodable {
+    let organizationId: String
+    let organizationName: String
+    let counterId: String
 }
 
 private struct CounterAPIErrorResponse: Decodable {

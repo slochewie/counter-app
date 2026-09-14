@@ -1,0 +1,19 @@
+{
+  "name": "NiteOwl.dev Counter",
+  "short_name": "Counter",
+  "description": "NiteOwl.dev capacity counter",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#09090b",
+  "theme_color": "#09090b",
+  "icons": [
+    {
+      "src": "/counter-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

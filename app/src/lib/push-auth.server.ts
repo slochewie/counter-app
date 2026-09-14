@@ -117,12 +117,14 @@ async function verifyJwt(request: Request): Promise<VerifiedCounterToken | null>
   }
 
   const authBaseUrl = getAuthBaseUrl(request);
+  const oauthIssuer = `${authBaseUrl}/api/auth`;
   const counterResourceUrl = getCounterResourceUrl(request);
   const browserAudience = audienceIncludes(payload.aud, authBaseUrl);
   const resourceAudience = audienceIncludes(payload.aud, counterResourceUrl);
+  const validIssuer = payload.iss === authBaseUrl || payload.iss === oauthIssuer;
 
   if (
-    payload.iss !== authBaseUrl ||
+    !validIssuer ||
     (!browserAudience && !resourceAudience) ||
     typeof payload.sub !== "string" ||
     payload.sub.length === 0

@@ -15,20 +15,30 @@ This directory contains source for the native iPhone companion and WidgetKit ext
 
 No client secret belongs in the app. Authorization Code + PKCE is required.
 
-## Xcode targets
+## Xcode project
 
-Create an iOS 17+ app target named `NiteOwlCounter` and a Widget Extension target named `CounterWidget`.
+`project.yml` defines the iOS 17+ app and WidgetKit extension. Generate the Xcode project with XcodeGen:
 
-Recommended identifiers:
+```bash
+cd ios
+xcodegen generate
+open NiteOwlCounter.xcodeproj
+```
 
+Targets and identifiers:
+
+- App target: `NiteOwlCounter`
+- Widget target: `CounterWidget`
 - App bundle identifier: `dev.niteowl.counter`
 - Widget bundle identifier: `dev.niteowl.counter.widget`
 - App Group: `group.dev.niteowl.counter`
 - Shared Keychain access group: `$(AppIdentifierPrefix)dev.niteowl.counter.shared`
 
-Register the URL scheme `dev.niteowl.counter` on the app target so `dev.niteowl.counter:/oauth/callback` is delivered back to the app.
+The generated app target registers the URL scheme `dev.niteowl.counter`, so `dev.niteowl.counter:/oauth/callback` is delivered back to the app. Both targets include the shared App Group and Keychain access-group entitlements, and the widget extension is embedded in the app.
 
-The app target should own interactive sign-in with `ASWebAuthenticationSession`. The widget must never present interactive authentication. Access and refresh tokens belong in the shared Keychain access group; non-secret selected-counter metadata and cached count may use the App Group container.
+After opening the project in Xcode, select the appropriate Apple development team for both targets. The App Group and Keychain Sharing capabilities must resolve to the same identifiers in the signing profile.
+
+The app target owns interactive sign-in with `ASWebAuthenticationSession`. The widget must never present interactive authentication. Access and refresh tokens belong in the shared Keychain access group; non-secret selected-counter metadata and cached count use the App Group container.
 
 ## OAuth flow
 
@@ -45,4 +55,4 @@ The app target should own interactive sign-in with `ASWebAuthenticationSession`.
 5. Call Counter HTTP endpoints with `Authorization: Bearer <access-token>`.
 6. Use the refresh token when the access token expires. If refresh fails permanently, keep the last cached widget value and require the user to reopen the app to sign in again.
 
-The Counter server already validates the OAuth access-token resource audience and requires `counter:read` for state and `counter:write` for commands.
+The Counter server validates the OAuth access-token resource audience and requires `counter:read` for discovery/state and `counter:write` for commands.

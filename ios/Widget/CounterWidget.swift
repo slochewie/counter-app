@@ -37,7 +37,7 @@ struct CounterWidgetProvider: AppIntentTimelineProvider {
         for configuration: CounterWidgetConfigurationIntent,
         in context: Context
     ) async -> CounterWidgetEntry {
-        entry(for: configuration, fetchLive: false)
+        await entry(for: configuration, fetchLive: false)
     }
 
     func timeline(

@@ -1,6 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { getAuthenticatedUserId, userCanAccessCounter } from "#/lib/push-auth.server.ts";
+import {
+  getAuthenticatedUserId,
+  hasCounterScope,
+  userCanAccessCounter,
+} from "#/lib/push-auth.server.ts";
 import { getCounterState } from "#/lib/counter-mqtt.server.ts";
 
 function jsonError(message: string, status: number) {
@@ -15,6 +19,10 @@ export const Route = createFileRoute("/api/counter/state")({
 
         if (!userId) {
           return jsonError("Unauthorized", 401);
+        }
+
+        if (!(await hasCounterScope(request, "counter:read"))) {
+          return jsonError("Insufficient scope", 403);
         }
 
         const url = new URL(request.url);

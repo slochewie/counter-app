@@ -338,7 +338,9 @@ function CounterApp() {
                           <dd className="pt-1">
                             <PushNotifications
                               organizationId={activeOrganization.id}
+                              organizationName={activeOrganization.name}
                               counterId={locationId}
+                              count={count}
                             />
                           </dd>
                         </>

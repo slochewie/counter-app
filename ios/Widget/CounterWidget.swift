@@ -30,41 +30,17 @@ struct CounterWidgetProvider: TimelineProvider {
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<CounterWidgetEntry>) -> Void) {
-        Task {
-            let entry = await loadEntry()
-            let nextRefresh = Date.now.addingTimeInterval(15 * 60)
-            completion(Timeline(entries: [entry], policy: .after(nextRefresh)))
-        }
-    }
-
-    private func loadEntry() async -> CounterWidgetEntry {
-        guard let store = CounterSharedStore() else {
-            return CounterWidgetEntry(
-                date: .now,
-                snapshot: nil,
-                errorMessage: "Unable to access shared Counter data"
-            )
-        }
-
-        guard let selection = store.selection() else {
-            return CounterWidgetEntry(
-                date: .now,
-                snapshot: store.snapshot(),
-                errorMessage: "Open Counter to select a Counter"
-            )
-        }
-
-        do {
-            let api = CounterRuntime.apiClient(for: selection.environment)
-            let snapshot = try await api.state(for: selection)
-            return CounterWidgetEntry(date: .now, snapshot: snapshot, errorMessage: nil)
-        } catch {
-            return CounterWidgetEntry(
-                date: .now,
-                snapshot: store.snapshot(),
-                errorMessage: error.localizedDescription
-            )
-        }
+        let store = CounterSharedStore()
+        let snapshot = store?.snapshot()
+        let hasSelection = store?.selection() != nil
+        let errorMessage = hasSelection ? nil : "Open Counter to select a Counter"
+        let entry = CounterWidgetEntry(
+            date: .now,
+            snapshot: snapshot,
+            errorMessage: errorMessage
+        )
+        let nextRefresh = Date.now.addingTimeInterval(15 * 60)
+        completion(Timeline(entries: [entry], policy: .after(nextRefresh)))
     }
 }
 

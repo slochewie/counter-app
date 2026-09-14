@@ -11,7 +11,8 @@ final class CounterAuthenticationSession: NSObject, ASWebAuthenticationPresentat
         let state = UUID().uuidString
         let authorizationURL = try await oauth.authorizationURL(pkce: pkce, state: state)
 
-        let callbackURL = try await withCheckedThrowingContinuation { continuation in
+        let callbackURL: URL = try await withCheckedThrowingContinuation {
+            (continuation: CheckedContinuation<URL, any Error>) in
             let session = ASWebAuthenticationSession(
                 url: authorizationURL,
                 callbackURLScheme: CounterOAuthConfiguration.callbackScheme

@@ -30,28 +30,28 @@ const ApiPushRoute = ApiPushRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPushConfigRoute = ApiPushConfigRouteImport.update({
-  id: '/api/push/config',
-  path: '/api/push/config',
-  getParentRoute: () => rootRouteImport,
+  id: '/config',
+  path: '/config',
+  getParentRoute: () => ApiPushRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/assignments': typeof AssignmentsRoute
-  '/api/push': typeof ApiPushRoute
+  '/api/push': typeof ApiPushRouteWithChildren
   '/api/push/config': typeof ApiPushConfigRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/assignments': typeof AssignmentsRoute
-  '/api/push': typeof ApiPushRoute
+  '/api/push': typeof ApiPushRouteWithChildren
   '/api/push/config': typeof ApiPushConfigRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/assignments': typeof AssignmentsRoute
-  '/api/push': typeof ApiPushRoute
+  '/api/push': typeof ApiPushRouteWithChildren
   '/api/push/config': typeof ApiPushConfigRoute
 }
 export interface FileRouteTypes {
@@ -65,8 +65,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AssignmentsRoute: typeof AssignmentsRoute
-  ApiPushRoute: typeof ApiPushRoute
-  ApiPushConfigRoute: typeof ApiPushConfigRoute
+  ApiPushRoute: typeof ApiPushRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -94,19 +93,29 @@ declare module '@tanstack/react-router' {
     }
     '/api/push/config': {
       id: '/api/push/config'
-      path: '/api/push/config'
+      path: '/config'
       fullPath: '/api/push/config'
       preLoaderRoute: typeof ApiPushConfigRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof ApiPushRoute
     }
   }
 }
 
+interface ApiPushRouteChildren {
+  ApiPushConfigRoute: typeof ApiPushConfigRoute
+}
+
+const ApiPushRouteChildren: ApiPushRouteChildren = {
+  ApiPushConfigRoute: ApiPushConfigRoute,
+}
+
+const ApiPushRouteWithChildren =
+  ApiPushRoute._addFileChildren(ApiPushRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AssignmentsRoute: AssignmentsRoute,
-  ApiPushRoute: ApiPushRoute,
-  ApiPushConfigRoute: ApiPushConfigRoute,
+  ApiPushRoute: ApiPushRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -61,7 +61,26 @@ function getAuthBaseUrl(request: Request) {
 
 function getCounterResourceUrl(request: Request) {
   const url = new URL(request.url);
-  return `${url.protocol}//${url.host}`;
+  const forwardedProto = request.headers
+    .get("x-forwarded-proto")
+    ?.split(",")[0]
+    ?.trim()
+    .toLowerCase();
+  const forwardedHost = request.headers
+    .get("x-forwarded-host")
+    ?.split(",")[0]
+    ?.trim();
+  const protocol = forwardedProto === "https" ? "https:" : url.protocol;
+  const host = forwardedHost || url.host;
+
+  if (
+    host === "counter.niteowl.dev" ||
+    host === "counter.mccarthysirishpub.com"
+  ) {
+    return `https://${host}`;
+  }
+
+  return `${protocol}//${host}`;
 }
 
 function bearerToken(request: Request) {

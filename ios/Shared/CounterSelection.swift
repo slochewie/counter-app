@@ -1,13 +1,13 @@
 import Foundation
 
-struct CounterSelection: Codable, Sendable, Equatable {
+struct CounterSelection: Codable, Sendable, Equatable, Hashable {
     let organizationID: String
     let organizationName: String
     let counterID: String
     let environment: CounterEnvironment
 }
 
-enum CounterEnvironment: String, Codable, Sendable, CaseIterable {
+enum CounterEnvironment: String, Codable, Sendable, CaseIterable, Hashable {
     case niteOwl
     case mccarthys
 

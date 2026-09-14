@@ -1,18 +1,23 @@
 import { useEffect, useState, type ReactNode } from "react"
 import { useLocation } from "@tanstack/react-router"
-import { buildNavigation, type NiteOwlIconId } from "@niteowl/app-config"
+import {
+  appDefinitionsById,
+  buildNavigation,
+  getDefaultAppUrls,
+  getDeploymentBrand,
+} from "@niteowl/app-config"
+import {
+  AppSidebarIdentity,
+  NiteOwlNavigationIcon,
+  useCurrentHostname,
+} from "@niteowl/ui"
 import {
   Building2Icon,
-  GaugeIcon,
-  HandCoinsIcon,
   LogOutIcon,
-  NetworkIcon,
   PaletteIcon,
   SettingsIcon,
   ShieldCheckIcon,
-  SquareTerminalIcon,
   UserCircleIcon,
-  UsersIcon,
 } from "lucide-react"
 
 import { AccountSwitcherSubmenu } from "#/components/account-switcher-submenu.tsx"
@@ -48,8 +53,10 @@ import {
   SidebarTrigger,
 } from "#/components/ui/sidebar.tsx"
 import { TooltipProvider } from "#/components/ui/tooltip.tsx"
-import { authBaseURL, authClient } from "#/lib/auth-client.ts"
+import { authClient } from "#/lib/auth-client.ts"
 import { getCounterManagementAccess } from "#/lib/counter-access.ts"
+
+const COUNTER_APP = appDefinitionsById.counter
 
 function getInitials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean)
@@ -58,29 +65,6 @@ function getInitials(name: string) {
   if (parts.length === 1) return parts[0][0]?.toUpperCase() ?? "?"
 
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
-}
-
-function getAppLinks() {
-  const hostname = window.location.hostname
-  const isMccarthysDomain =
-    hostname === "mccarthysirishpub.com" ||
-    hostname.endsWith(".mccarthysirishpub.com")
-
-  if (isMccarthysDomain) {
-    return {
-      console: "https://console.mccarthysirishpub.com/",
-      "tip-calculator": "https://tip-calculator.mccarthysirishpub.com",
-      counter: "https://counter.mccarthysirishpub.com",
-      "network-status": "https://unifi.mccarthysirishpub.com",
-    }
-  }
-
-  return {
-    console: "https://console.niteowl.dev",
-    "tip-calculator": "https://tips.niteowl.dev",
-    counter: "https://counter.niteowl.dev",
-    "network-status": "https://unifi.niteowl.dev",
-  }
 }
 
 function getSidebarDefaultOpen() {
@@ -99,25 +83,9 @@ const sidebarButtonClassName =
 const sidebarLabelClassName =
   "truncate group-data-[collapsible=icon]:hidden"
 
-function NavigationIcon({ icon }: { icon: NiteOwlIconId }) {
-  switch (icon) {
-    case "gauge":
-      return <GaugeIcon />
-    case "users":
-      return <UsersIcon />
-    case "square-terminal":
-      return <SquareTerminalIcon />
-    case "hand-coins":
-      return <HandCoinsIcon />
-    case "network":
-      return <NetworkIcon />
-    default:
-      return null
-  }
-}
-
 export function AppChrome({ children }: { children: ReactNode }) {
   const location = useLocation()
+  const hostname = useCurrentHostname()
   const { data: session } = authClient.useSession()
   const { data: activeOrganization } = authClient.useActiveOrganization()
   const [hasDelegatedCounterManagement, setHasDelegatedCounterManagement] =
@@ -158,122 +126,139 @@ export function AppChrome({ children }: { children: ReactNode }) {
     return children
   }
 
+  const appLinks = hostname ? getDefaultAppUrls(hostname) : null
+  const brand = hostname ? getDeploymentBrand(hostname) : null
   const displayName = session.user.name || session.user.email
   const avatarLabel = getInitials(displayName)
-  const consoleBaseURL = authBaseURL.replace(/\/$/, "")
+  const consoleBaseURL = appLinks?.console.replace(/\/$/, "") ?? null
   const sidebarDefaultOpen = getSidebarDefaultOpen()
-  const navigation = buildNavigation({
-    currentApp: "counter",
-    currentPath: location.pathname,
-    urls: getAppLinks(),
-    canAccess: ({ key }) =>
-      key === "counter:manage-assignments"
-        ? canManageCounterAssignments
-        : true,
-  })
-  const primarySection = navigation.primary[0]
-  const appsSection = navigation.apps[0]
+  const navigation = appLinks
+    ? buildNavigation({
+        currentApp: "counter",
+        currentPath: location.pathname,
+        urls: appLinks,
+        canAccess: ({ key }) =>
+          key === "counter:manage-assignments"
+            ? canManageCounterAssignments
+            : true,
+      })
+    : null
+  const primarySection = navigation?.primary[0]
+  const appsSection = navigation?.apps[0]
 
   return (
     <TooltipProvider>
       <SidebarProvider defaultOpen={sidebarDefaultOpen}>
         <Sidebar collapsible="icon">
-          <SidebarHeader className="px-3 py-4">
-            <div className="text-base font-semibold group-data-[collapsible=icon]:hidden">
-              NiteOwl
-            </div>
+          <SidebarHeader>
+            {appLinks && brand ? (
+              <AppSidebarIdentity
+                href={appLinks.counter}
+                brand={brand}
+                appName={COUNTER_APP.label}
+              />
+            ) : (
+              <div className="h-12" aria-hidden="true" />
+            )}
           </SidebarHeader>
+          <SidebarSeparator />
 
           <SidebarContent>
-            <SidebarGroup>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {primarySection.items.map((item) => (
-                    <SidebarMenuItem key={item.id}>
-                      <SidebarMenuButton
-                        className={sidebarButtonClassName}
-                        isActive={item.active}
-                        tooltip={item.label}
-                        onClick={() => window.location.assign(item.href)}
-                      >
-                        <NavigationIcon icon={item.icon} />
-                        <span className={sidebarLabelClassName}>{item.label}</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
+            {primarySection ? (
+              <SidebarGroup>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {primarySection.items.map((item) => (
+                      <SidebarMenuItem key={item.id}>
+                        <SidebarMenuButton
+                          className={sidebarButtonClassName}
+                          isActive={item.active}
+                          tooltip={item.label}
+                          onClick={() => window.location.assign(item.href)}
+                        >
+                          <NiteOwlNavigationIcon icon={item.icon} />
+                          <span className={sidebarLabelClassName}>{item.label}</span>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            ) : null}
 
             <SidebarSeparator />
 
-            <SidebarGroup>
-              <SidebarGroupLabel className="text-sm">{appsSection.label}</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {appsSection.items.map((item) => (
-                    <SidebarMenuItem key={item.id}>
-                      <SidebarMenuButton
-                        className={sidebarButtonClassName}
-                        tooltip={item.label}
-                        onClick={() => window.location.assign(item.href)}
-                      >
-                        <NavigationIcon icon={item.icon} />
-                        <span className={sidebarLabelClassName}>{item.label}</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
+            {appsSection ? (
+              <SidebarGroup>
+                <SidebarGroupLabel className="text-sm">{appsSection.label}</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {appsSection.items.map((item) => (
+                      <SidebarMenuItem key={item.id}>
+                        <SidebarMenuButton
+                          className={sidebarButtonClassName}
+                          tooltip={item.label}
+                          onClick={() => window.location.assign(item.href)}
+                        >
+                          <NiteOwlNavigationIcon icon={item.icon} />
+                          <span className={sidebarLabelClassName}>{item.label}</span>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            ) : null}
 
             <SidebarSeparator />
 
-            <SidebarGroup>
-              <SidebarGroupLabel className="text-sm">Settings</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      className={sidebarButtonClassName}
-                      tooltip="Account"
-                      onClick={() =>
-                        window.location.assign(`${consoleBaseURL}/settings/account`)
-                      }
-                    >
-                      <UserCircleIcon />
-                      <span className={sidebarLabelClassName}>Account</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      className={sidebarButtonClassName}
-                      tooltip="Security"
-                      onClick={() =>
-                        window.location.assign(`${consoleBaseURL}/settings/security`)
-                      }
-                    >
-                      <ShieldCheckIcon />
-                      <span className={sidebarLabelClassName}>Security</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      className={sidebarButtonClassName}
-                      tooltip="Organizations"
-                      onClick={() =>
-                        window.location.assign(
-                          `${consoleBaseURL}/settings/organizations`,
-                        )
-                      }
-                    >
-                      <Building2Icon />
-                      <span className={sidebarLabelClassName}>Organizations</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
+            {consoleBaseURL ? (
+              <SidebarGroup>
+                <SidebarGroupLabel className="text-sm">Settings</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        className={sidebarButtonClassName}
+                        tooltip="Account"
+                        onClick={() =>
+                          window.location.assign(`${consoleBaseURL}/settings/account`)
+                        }
+                      >
+                        <UserCircleIcon />
+                        <span className={sidebarLabelClassName}>Account</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        className={sidebarButtonClassName}
+                        tooltip="Security"
+                        onClick={() =>
+                          window.location.assign(`${consoleBaseURL}/settings/security`)
+                        }
+                      >
+                        <ShieldCheckIcon />
+                        <span className={sidebarLabelClassName}>Security</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        className={sidebarButtonClassName}
+                        tooltip="Organizations"
+                        onClick={() =>
+                          window.location.assign(
+                            `${consoleBaseURL}/settings/organizations`,
+                          )
+                        }
+                      >
+                        <Building2Icon />
+                        <span className={sidebarLabelClassName}>Organizations</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            ) : null}
           </SidebarContent>
         </Sidebar>
 
@@ -281,20 +266,13 @@ export function AppChrome({ children }: { children: ReactNode }) {
           <header className="flex min-h-16 items-center gap-3 border-b bg-background/95 px-4 backdrop-blur md:px-6">
             <SidebarTrigger />
 
-            <img
-              src={`${consoleBaseURL}/branding/niteowl.dev/niteowl-icon.png`}
-              alt=""
-              width={28}
-              height={28}
-              className="h-7 w-7 max-w-7 shrink-0 object-contain"
-              style={{ width: 28, height: 28 }}
-            />
-
             <div className="min-w-0 shrink-0">
-              <p className="truncate text-sm font-semibold">Counter</p>
-              <p className="hidden truncate text-xs text-muted-foreground sm:block">
-                NiteOwl.dev
-              </p>
+              <p className="truncate text-sm font-semibold">{COUNTER_APP.label}</p>
+              {brand ? (
+                <p className="hidden truncate text-xs text-muted-foreground sm:block">
+                  {brand}
+                </p>
+              ) : null}
             </div>
 
             <div className="ml-auto flex min-w-0 items-center gap-2">
@@ -336,41 +314,45 @@ export function AppChrome({ children }: { children: ReactNode }) {
 
                   <DropdownMenuSeparator />
 
-                  <DropdownMenuGroup>
-                    <DropdownMenuItem
-                      onClick={() =>
-                        window.location.assign(`${consoleBaseURL}/settings/account`)
-                      }
-                    >
-                      <SettingsIcon className="text-muted-foreground" />
-                      Settings
-                    </DropdownMenuItem>
+                  {consoleBaseURL ? (
+                    <DropdownMenuGroup>
+                      <DropdownMenuItem
+                        onClick={() =>
+                          window.location.assign(`${consoleBaseURL}/settings/account`)
+                        }
+                      >
+                        <SettingsIcon className="text-muted-foreground" />
+                        Settings
+                      </DropdownMenuItem>
 
-                    <div className="relative">
-                      <PaletteIcon className="pointer-events-none absolute left-2 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground" />
-                      <div className="pl-6">
-                        <ThemeMenuControl />
+                      <div className="relative">
+                        <PaletteIcon className="pointer-events-none absolute left-2 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground" />
+                        <div className="pl-6">
+                          <ThemeMenuControl />
+                        </div>
                       </div>
-                    </div>
 
-                    <AccountSwitcherSubmenu
-                      currentUserId={session.user.id}
-                      consoleBaseURL={consoleBaseURL}
-                    />
-                  </DropdownMenuGroup>
+                      <AccountSwitcherSubmenu
+                        currentUserId={session.user.id}
+                        consoleBaseURL={consoleBaseURL}
+                      />
+                    </DropdownMenuGroup>
+                  ) : null}
 
                   <DropdownMenuSeparator />
 
-                  <DropdownMenuGroup>
-                    <DropdownMenuItem
-                      onClick={() =>
-                        window.location.assign(`${consoleBaseURL}/auth/sign-out`)
-                      }
-                    >
-                      <LogOutIcon className="text-muted-foreground" />
-                      Sign Out
-                    </DropdownMenuItem>
-                  </DropdownMenuGroup>
+                  {consoleBaseURL ? (
+                    <DropdownMenuGroup>
+                      <DropdownMenuItem
+                        onClick={() =>
+                          window.location.assign(`${consoleBaseURL}/auth/sign-out`)
+                        }
+                      >
+                        <LogOutIcon className="text-muted-foreground" />
+                        Sign Out
+                      </DropdownMenuItem>
+                    </DropdownMenuGroup>
+                  ) : null}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>

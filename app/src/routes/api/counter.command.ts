@@ -1,6 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { getAuthenticatedUserId, userCanAccessCounter } from "#/lib/push-auth.server.ts";
+import {
+  getAuthenticatedUserId,
+  hasCounterScope,
+  userCanAccessCounter,
+} from "#/lib/push-auth.server.ts";
 import {
   sendCounterCommand,
   type CounterCommand,
@@ -24,6 +28,10 @@ export const Route = createFileRoute("/api/counter/command")({
 
         if (!userId) {
           return jsonError("Unauthorized", 401);
+        }
+
+        if (!(await hasCounterScope(request, "counter:write"))) {
+          return jsonError("Insufficient scope", 403);
         }
 
         let body: CounterCommandBody;

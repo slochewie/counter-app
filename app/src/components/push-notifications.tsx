@@ -6,7 +6,9 @@ import { authClient } from "#/lib/auth-client.ts";
 
 type PushNotificationsProps = {
   organizationId: string;
+  organizationName: string;
   counterId: string;
+  count: number | null;
 };
 
 type PushConfig = {
@@ -54,11 +56,13 @@ async function pushAuthorizationHeader() {
 
 export function PushNotifications({
   organizationId,
+  organizationName,
   counterId,
+  count,
 }: PushNotificationsProps) {
   const [state, setState] = useState<PushState>("checking");
   const [message, setMessage] = useState<string | null>(null);
-  const [sendingTest, setSendingTest] = useState(false);
+  const [sendingCount, setSendingCount] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -208,8 +212,13 @@ export function PushNotifications({
     }
   }
 
-  async function sendTestNotification() {
-    setSendingTest(true);
+  async function sendCount() {
+    if (count === null) {
+      setMessage("Current count is not available yet.");
+      return;
+    }
+
+    setSendingCount(true);
     setMessage(null);
 
     try {
@@ -222,7 +231,9 @@ export function PushNotifications({
         },
         body: JSON.stringify({
           organizationId,
+          organizationName,
           counterId,
+          count,
         }),
       });
 
@@ -234,20 +245,18 @@ export function PushNotifications({
       };
 
       if (!response.ok) {
-        throw new Error(result.error ?? "Unable to send test notification.");
+        throw new Error(result.error ?? "Unable to send current count.");
       }
 
       setMessage(
-        `Test sent to ${result.sent ?? 0} of ${result.subscriptions ?? 0} subscription${result.subscriptions === 1 ? "" : "s"}.`,
+        `Count sent to ${result.sent ?? 0} of ${result.subscriptions ?? 0} subscription${result.subscriptions === 1 ? "" : "s"}.`,
       );
     } catch (error: unknown) {
       setMessage(
-        error instanceof Error
-          ? error.message
-          : "Unable to send test notification.",
+        error instanceof Error ? error.message : "Unable to send current count.",
       );
     } finally {
-      setSendingTest(false);
+      setSendingCount(false);
     }
   }
 
@@ -278,11 +287,11 @@ export function PushNotifications({
             type="button"
             size="sm"
             variant="outline"
-            disabled={busy || sendingTest}
-            onClick={() => void sendTestNotification()}
+            disabled={busy || sendingCount || count === null}
+            onClick={() => void sendCount()}
           >
             <SendIcon />
-            {sendingTest ? "Sending…" : "Send test notification"}
+            {sendingCount ? "Sending…" : "Send Count"}
           </Button>
         ) : null}
 
@@ -290,7 +299,7 @@ export function PushNotifications({
           type="button"
           size="sm"
           variant={enabled ? "outline" : "secondary"}
-          disabled={busy || sendingTest}
+          disabled={busy || sendingCount}
           onClick={() => {
             if (enabled) {
               void disableNotifications();

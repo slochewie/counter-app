@@ -21,7 +21,7 @@ targets:
     info:
       path: App/Info.plist
       properties:
-        CFBundleDisplayName: NiteOwl Counter
+        CFBundleDisplayName: Counter
         CFBundleURLTypes:
           - CFBundleTypeRole: Editor
             CFBundleURLName: dev.niteowl.counter.oauth
@@ -40,6 +40,7 @@ targets:
           - $(AppIdentifierPrefix)dev.niteowl.counter.shared
     settings:
       base:
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         PRODUCT_BUNDLE_IDENTIFIER: dev.niteowl.counter
         PRODUCT_NAME: NiteOwlCounter
         TARGETED_DEVICE_FAMILY: "1"

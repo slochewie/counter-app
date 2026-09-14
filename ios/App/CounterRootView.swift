@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct CounterRootView: View {
+    @Environment(\.openURL) private var openURL
     @ObservedObject var model: CounterAppModel
     @GestureState private var resetPressed = false
 
@@ -22,11 +23,37 @@ struct CounterRootView: View {
 
                 if model.signedIn {
                     ToolbarItem(placement: .topBarTrailing) {
-                        Button("Sign Out") {
-                            Task {
-                                await model.signOut()
+                        Menu {
+                            Button {
+                                if let url = URL(string: "https://console.mccarthysirishpub.com/settings/account") {
+                                    openURL(url)
+                                }
+                            } label: {
+                                Label("Settings", systemImage: "gearshape")
                             }
+
+                            Divider()
+
+                            Button(role: .destructive) {
+                                Task {
+                                    await model.signOut()
+                                }
+                            } label: {
+                                Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right")
+                            }
+                        } label: {
+                            ZStack {
+                                Circle()
+                                    .fill(.secondary.opacity(0.18))
+
+                                Image(systemName: "person.fill")
+                                    .font(.system(size: 15, weight: .semibold))
+                                    .foregroundStyle(.primary)
+                            }
+                            .frame(width: 32, height: 32)
+                            .contentShape(Circle())
                         }
+                        .accessibilityLabel("Account menu")
                     }
                 }
             }

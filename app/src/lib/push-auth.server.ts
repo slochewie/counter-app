@@ -13,10 +13,17 @@ type JwtPayload = {
   aud?: string | string[];
   exp?: number;
   nbf?: number;
+  scope?: string;
 };
 
 type JwksResponse = {
   keys?: JsonWebKey[];
+};
+
+type VerifiedCounterToken = {
+  payload: JwtPayload;
+  authBaseUrl: string;
+  resourceAudience: boolean;
 };
 
 function getAuthBaseUrl(request: Request) {
@@ -42,6 +49,11 @@ function getAuthBaseUrl(request: Request) {
   return "https://console.niteowl.dev";
 }
 
+function getCounterResourceUrl(request: Request) {
+  const url = new URL(request.url);
+  return `${url.protocol}//${url.host}`;
+}
+
 function bearerToken(request: Request) {
   const authorization = request.headers.get("authorization")?.trim();
 
@@ -63,7 +75,11 @@ function audienceIncludes(audience: string | string[] | undefined, expected: str
     : audience === expected;
 }
 
-async function verifyJwt(request: Request) {
+function scopeIncludes(scope: string | undefined, required: string) {
+  return scope?.split(/\s+/).includes(required) ?? false;
+}
+
+async function verifyJwt(request: Request): Promise<VerifiedCounterToken | null> {
   const token = bearerToken(request);
 
   if (!token) {
@@ -91,10 +107,13 @@ async function verifyJwt(request: Request) {
   }
 
   const authBaseUrl = getAuthBaseUrl(request);
+  const counterResourceUrl = getCounterResourceUrl(request);
+  const browserAudience = audienceIncludes(payload.aud, authBaseUrl);
+  const resourceAudience = audienceIncludes(payload.aud, counterResourceUrl);
 
   if (
     payload.iss !== authBaseUrl ||
-    !audienceIncludes(payload.aud, authBaseUrl) ||
+    (!browserAudience && !resourceAudience) ||
     typeof payload.sub !== "string" ||
     payload.sub.length === 0
   ) {
@@ -138,15 +157,35 @@ async function verifyJwt(request: Request) {
       new TextEncoder().encode(`${parts[0]}.${parts[1]}`),
     );
 
-    return verified ? payload : null;
+    return verified
+      ? {
+          payload,
+          authBaseUrl,
+          resourceAudience,
+        }
+      : null;
   } catch {
     return null;
   }
 }
 
 export async function getAuthenticatedUserId(request: Request) {
-  const payload = await verifyJwt(request);
-  return payload?.sub ?? null;
+  const verified = await verifyJwt(request);
+  return verified?.payload.sub ?? null;
+}
+
+export async function hasCounterScope(request: Request, requiredScope: string) {
+  const verified = await verifyJwt(request);
+
+  if (!verified) {
+    return false;
+  }
+
+  if (!verified.resourceAudience) {
+    return true;
+  }
+
+  return scopeIncludes(verified.payload.scope, requiredScope);
 }
 
 export async function userCanAccessCounter(

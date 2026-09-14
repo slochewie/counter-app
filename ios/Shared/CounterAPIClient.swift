@@ -67,7 +67,7 @@ actor CounterAPIClient {
         let body = CounterCommandRequest(
             organizationId: selection.organizationID,
             counterId: selection.counterID,
-            command: command.rawValue
+            action: command.rawValue
         )
         let response: CounterStateResponse = try await request(
             url: url,
@@ -120,7 +120,7 @@ enum CounterCommand: String, Codable, Sendable {
 private struct CounterCommandRequest: Encodable {
     let organizationId: String
     let counterId: String
-    let command: String
+    let action: String
 }
 
 private struct CounterStateResponse: Decodable {

@@ -2,9 +2,9 @@ import AppIntents
 import WidgetKit
 
 struct IncrementCounterIntent: AppIntent {
-    static var title: LocalizedStringResource = "Increment Counter"
-    static var description = IntentDescription("Adds one to the selected Counter.")
-    static var openAppWhenRun = false
+    static let title: LocalizedStringResource = "Increment Counter"
+    static let description = IntentDescription("Adds one to the selected Counter.")
+    static let openAppWhenRun = false
 
     func perform() async throws -> some IntentResult {
         try await performCounterCommand(.increment)
@@ -13,9 +13,9 @@ struct IncrementCounterIntent: AppIntent {
 }
 
 struct DecrementCounterIntent: AppIntent {
-    static var title: LocalizedStringResource = "Decrement Counter"
-    static var description = IntentDescription("Subtracts one from the selected Counter.")
-    static var openAppWhenRun = false
+    static let title: LocalizedStringResource = "Decrement Counter"
+    static let description = IntentDescription("Subtracts one from the selected Counter.")
+    static let openAppWhenRun = false
 
     func perform() async throws -> some IntentResult {
         try await performCounterCommand(.decrement)

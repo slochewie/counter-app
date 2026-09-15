@@ -5,5 +5,6 @@ import WidgetKit
 struct CounterWidgetBundle: WidgetBundle {
     var body: some Widget {
         CounterWidget()
+        CounterLockScreenWidget()
     }
 }

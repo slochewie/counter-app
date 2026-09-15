@@ -3,6 +3,7 @@ import SwiftUI
 import WidgetKit
 
 let counterWidgetKind = "CounterWidget"
+let counterLockScreenWidgetKind = "CounterLockScreenWidget"
 
 struct CounterWidgetEntry: TimelineEntry {
     let date: Date
@@ -275,6 +276,22 @@ struct CounterWidget: Widget {
         .supportedFamilies([
             .systemSmall,
             .systemMedium,
+        ])
+    }
+}
+
+struct CounterLockScreenWidget: Widget {
+    var body: some WidgetConfiguration {
+        AppIntentConfiguration(
+            kind: counterLockScreenWidgetKind,
+            intent: CounterWidgetConfigurationIntent.self,
+            provider: CounterWidgetProvider()
+        ) { entry in
+            CounterWidgetEntryView(entry: entry)
+        }
+        .configurationDisplayName("Counter")
+        .description("Monitor a NiteOwl Counter from the Lock Screen.")
+        .supportedFamilies([
             .accessoryCircular,
             .accessoryRectangular,
             .accessoryInline,

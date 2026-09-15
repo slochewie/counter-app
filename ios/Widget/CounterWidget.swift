@@ -101,6 +101,12 @@ struct CounterWidgetEntryView: View {
                 switch family {
                 case .systemMedium:
                     medium(snapshot)
+                case .accessoryCircular:
+                    accessoryCircular(snapshot)
+                case .accessoryRectangular:
+                    accessoryRectangular(snapshot)
+                case .accessoryInline:
+                    accessoryInline(snapshot)
                 default:
                     small(snapshot)
                 }
@@ -108,7 +114,13 @@ struct CounterWidgetEntryView: View {
                 unavailable
             }
         }
-        .containerBackground(.black, for: .widget)
+        .containerBackground(for: .widget) {
+            if family == .systemSmall || family == .systemMedium {
+                Color.black
+            } else {
+                Color.clear
+            }
+        }
         .widgetURL(URL(string: "dev.niteowl.counter:/"))
     }
 
@@ -172,22 +184,80 @@ struct CounterWidgetEntryView: View {
         .foregroundStyle(.white)
     }
 
+    private func accessoryCircular(_ snapshot: CounterSnapshot) -> some View {
+        ZStack {
+            AccessoryWidgetBackground()
+
+            Text(snapshot.count.formatted())
+                .font(.system(.title, design: .rounded, weight: .bold))
+                .monospacedDigit()
+                .minimumScaleFactor(0.55)
+                .lineLimit(1)
+                .padding(5)
+        }
+        .widgetAccentable()
+    }
+
+    private func accessoryRectangular(_ snapshot: CounterSnapshot) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text(snapshot.organizationName)
+                .font(.caption2)
+                .fontWeight(.semibold)
+                .lineLimit(1)
+
+            Text(snapshot.count.formatted())
+                .font(.system(.title, design: .rounded, weight: .bold))
+                .monospacedDigit()
+                .minimumScaleFactor(0.65)
+                .lineLimit(1)
+        }
+        .widgetAccentable()
+    }
+
+    private func accessoryInline(_ snapshot: CounterSnapshot) -> some View {
+        Text("\(snapshot.organizationName) · \(snapshot.count.formatted())")
+            .lineLimit(1)
+            .widgetAccentable()
+    }
+
     private var configuredCounter: CounterWidgetEntity? {
         entry.selection.map(CounterWidgetEntity.init(selection:))
     }
 
+    @ViewBuilder
     private var unavailable: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Image(systemName: "person.crop.circle.badge.exclamationmark")
-                .font(.title2)
-            Text("Open Counter")
-                .font(.headline)
-            Text(entry.errorMessage ?? "Sign in and choose a Counter for this widget.")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .lineLimit(3)
+        switch family {
+        case .accessoryCircular:
+            ZStack {
+                AccessoryWidgetBackground()
+                Image(systemName: "exclamationmark")
+                    .font(.headline)
+            }
+            .widgetAccentable()
+        case .accessoryRectangular:
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Open Counter")
+                    .font(.headline)
+                Text("Choose a Counter")
+                    .font(.caption2)
+            }
+            .widgetAccentable()
+        case .accessoryInline:
+            Text("Open Counter to choose a Counter")
+                .widgetAccentable()
+        default:
+            VStack(alignment: .leading, spacing: 8) {
+                Image(systemName: "person.crop.circle.badge.exclamationmark")
+                    .font(.title2)
+                Text("Open Counter")
+                    .font(.headline)
+                Text(entry.errorMessage ?? "Sign in and choose a Counter for this widget.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(3)
+            }
+            .foregroundStyle(.white)
         }
-        .foregroundStyle(.white)
     }
 }
 
@@ -202,6 +272,12 @@ struct CounterWidget: Widget {
         }
         .configurationDisplayName("Counter")
         .description("Choose a NiteOwl Counter to monitor or control.")
-        .supportedFamilies([.systemSmall, .systemMedium])
+        .supportedFamilies([
+            .systemSmall,
+            .systemMedium,
+            .accessoryCircular,
+            .accessoryRectangular,
+            .accessoryInline,
+        ])
     }
 }

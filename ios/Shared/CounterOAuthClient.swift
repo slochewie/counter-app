@@ -67,11 +67,14 @@ actor CounterOAuthClient {
         }
 
         do {
+            // Do not resend the authorization scopes during a refresh. The
+            // refresh token already carries the scopes granted during the
+            // authorization-code flow, and the provider rejects OIDC scopes
+            // such as `openid` when they are re-requested here.
             let response: CounterOAuthTokenResponse = try await tokenRequest([
                 "grant_type": "refresh_token",
                 "client_id": CounterOAuthConfiguration.clientID,
                 "refresh_token": refreshToken,
-                "scope": CounterOAuthConfiguration.scopes.joined(separator: " "),
                 "resource": configuration.resource,
             ])
             let token = response.token(previousRefreshToken: refreshToken)
@@ -80,6 +83,7 @@ actor CounterOAuthClient {
         } catch let error as CounterOAuthError {
             if case .oauth(let code, _) = error, code == "invalid_grant" {
                 try? tokenStore.clear()
+                throw CounterOAuthError.sessionExpired
             }
             throw error
         }
@@ -140,6 +144,7 @@ enum CounterOAuthError: Error, LocalizedError {
     case invalidResponse
     case notAuthenticated
     case noRefreshToken
+    case sessionExpired
     case oauth(String, String?)
 
     var errorDescription: String? {
@@ -152,6 +157,8 @@ enum CounterOAuthError: Error, LocalizedError {
             return "Counter is not signed in."
         case .noRefreshToken:
             return "No Counter refresh token is available."
+        case .sessionExpired:
+            return "Your Counter session has expired. Sign out and sign in again."
         case .oauth(let code, let description):
             return description ?? "OAuth error: \(code)"
         }

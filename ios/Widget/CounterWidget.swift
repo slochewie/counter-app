@@ -205,14 +205,47 @@ struct CounterWidgetEntryView: View {
         ZStack {
             AccessoryWidgetBackground()
 
-            Text(snapshot.count.formatted())
-                .font(.system(.title, design: .rounded, weight: .bold))
-                .monospacedDigit()
-                .minimumScaleFactor(0.55)
-                .lineLimit(1)
-                .padding(5)
+            VStack(spacing: -1) {
+                Text(counterAbbreviation(snapshot.organizationName))
+                    .font(.system(size: 9, weight: .semibold, design: .rounded))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+
+                Text(snapshot.count.formatted())
+                    .font(.system(size: 24, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                    .minimumScaleFactor(0.55)
+                    .lineLimit(1)
+            }
+            .padding(4)
         }
         .widgetAccentable()
+    }
+
+    private func counterAbbreviation(_ name: String) -> String {
+        let lowercased = name.lowercased()
+        if lowercased.contains("mccarthy") {
+            return "MCC"
+        }
+        if lowercased.contains("bull") {
+            return "BUL"
+        }
+        if lowercased.contains("frog") {
+            return "F&P"
+        }
+        if lowercased.contains("library") {
+            return "LIB"
+        }
+
+        let words = name.split(whereSeparator: { !$0.isLetter && !$0.isNumber })
+        if words.count > 1 {
+            return words.prefix(3)
+                .compactMap(\.first)
+                .map { String($0).uppercased() }
+                .joined()
+        }
+
+        return String(name.prefix(3)).uppercased()
     }
 
     private func accessoryRectangular(_ snapshot: CounterSnapshot) -> some View {

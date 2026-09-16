@@ -46,11 +46,14 @@ class CounterWidget : GlanceAppWidget() {
     override val sizeMode: SizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val store = CounterStore(context)
-        val selection = store.loadSelection()
-        val snapshot = selection?.let(store::loadSnapshot)
-
         provideContent {
+            // Read persisted counter data inside the Glance composition so every
+            // update() recomposition sees the newest snapshot instead of values
+            // captured when provideGlance() first started.
+            val store = CounterStore(context)
+            val selection = store.loadSelection()
+            val snapshot = selection?.let(store::loadSnapshot)
+
             CounterWidgetContent(
                 context = context,
                 organizationName = selection?.organizationName ?: "NiteOwl Counter",

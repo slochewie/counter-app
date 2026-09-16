@@ -122,7 +122,23 @@ struct CounterWidgetEntryView: View {
                 Color.clear
             }
         }
-        .widgetURL(URL(string: "dev.niteowl.counter:/"))
+        .widgetURL(widgetURL)
+    }
+
+    private var widgetURL: URL? {
+        guard let selection = entry.selection else {
+            return URL(string: "dev.niteowl.counter:/")
+        }
+
+        var components = URLComponents()
+        components.scheme = "dev.niteowl.counter"
+        components.path = "/counter"
+        components.queryItems = [
+            URLQueryItem(name: "environment", value: selection.environment.rawValue),
+            URLQueryItem(name: "organizationId", value: selection.organizationID),
+            URLQueryItem(name: "counterId", value: selection.counterID),
+        ]
+        return components.url
     }
 
     private func small(_ snapshot: CounterSnapshot) -> some View {

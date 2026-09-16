@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">NiteOwl Counter</string>
+    <string name="counter_widget_description">View and control your selected NiteOwl Counter.</string>
 </resources>

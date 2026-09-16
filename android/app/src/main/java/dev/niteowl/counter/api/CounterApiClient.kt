@@ -13,7 +13,7 @@ import java.net.URL
 import java.net.URLEncoder
 
 class CounterApiClient(private val oauth: OAuthClient) {
-    fun availableCounters(environment: CounterEnvironment): List<CounterSelection> {
+    suspend fun availableCounters(environment: CounterEnvironment): List<CounterSelection> {
         val config = OAuthConfig.forEnvironment(environment)
         val json = JSONObject(request(environment, "${config.counterBaseUrl}/api/counter/available", "GET"))
         val array: JSONArray = json.getJSONArray("counters")
@@ -32,14 +32,14 @@ class CounterApiClient(private val oauth: OAuthClient) {
         }
     }
 
-    fun state(selection: CounterSelection): CounterSnapshot {
+    suspend fun state(selection: CounterSelection): CounterSnapshot {
         val config = OAuthConfig.forEnvironment(selection.environment)
         val url = "${config.counterBaseUrl}/api/counter/state?organizationId=${encode(selection.organizationId)}&counterId=${encode(selection.counterId)}"
         val json = JSONObject(request(selection.environment, url, "GET"))
         return snapshot(selection, json.getInt("count"))
     }
 
-    fun send(selection: CounterSelection, command: CounterCommand): CounterSnapshot {
+    suspend fun send(selection: CounterSelection, command: CounterCommand): CounterSnapshot {
         val config = OAuthConfig.forEnvironment(selection.environment)
         val body = JSONObject()
             .put("organizationId", selection.organizationId)
@@ -57,7 +57,7 @@ class CounterApiClient(private val oauth: OAuthClient) {
         count = count,
     )
 
-    private fun request(environment: CounterEnvironment, url: String, method: String, body: String? = null): String {
+    private suspend fun request(environment: CounterEnvironment, url: String, method: String, body: String? = null): String {
         val connection = (URL(url).openConnection() as HttpURLConnection).apply {
             requestMethod = method
             setRequestProperty("Authorization", "Bearer ${oauth.validAccessToken(environment)}")
@@ -68,9 +68,10 @@ class CounterApiClient(private val oauth: OAuthClient) {
             }
         }
         if (body != null) connection.outputStream.use { it.write(body.toByteArray()) }
-        val response = (if (connection.responseCode in 200..299) connection.inputStream else connection.errorStream)
+        val responseCode = connection.responseCode
+        val response = (if (responseCode in 200..299) connection.inputStream else connection.errorStream)
             .bufferedReader().use { it.readText() }
-        if (connection.responseCode !in 200..299) error("Counter API request failed (${connection.responseCode}): $response")
+        if (responseCode !in 200..299) error("Counter API request failed ($responseCode): $response")
         return response
     }
 

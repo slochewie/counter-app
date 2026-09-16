@@ -25,5 +25,16 @@
                 <data android:scheme="dev.niteowl.counter.android" android:path="/oauth/callback" />
             </intent-filter>
         </activity>
+
+        <receiver
+            android:name=".widget.CounterWidgetReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/counter_widget_info" />
+        </receiver>
     </application>
 </manifest>

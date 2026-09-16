@@ -1,10 +1,8 @@
 package dev.niteowl.counter.ui
 
 import android.content.Intent
-import android.net.Uri
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
@@ -36,7 +33,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -45,6 +41,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -55,7 +52,7 @@ import dev.niteowl.counter.data.CounterCommand
 import dev.niteowl.counter.data.CounterEnvironment
 import kotlinx.coroutines.delay
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CounterApp(viewModel: CounterViewModel) {
     val state by viewModel.state.collectAsState()
@@ -163,24 +160,33 @@ fun CounterApp(viewModel: CounterViewModel) {
                             }
 
                             Surface(
-                                modifier = Modifier.fillMaxWidth().height(52.dp).combinedClickable(
-                                    onClick = {},
-                                    onLongClick = {
-                                        resetting = true
-                                        viewModel.send(CounterCommand.RESET)
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(52.dp)
+                                    .pointerInput(state.busy) {
+                                        detectTapGestures(
+                                            onPress = {
+                                                if (state.busy) return@detectTapGestures
+                                                resetting = true
+                                                val held = try {
+                                                    delay(800)
+                                                    true
+                                                } finally {
+                                                    resetting = false
+                                                }
+                                                if (held) viewModel.send(CounterCommand.RESET)
+                                            },
+                                        )
                                     },
-                                ),
                                 color = if (resetting) Color(0xFF401A1C) else Color(0xFF57292B),
                                 shape = RoundedCornerShape(12.dp),
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
-                                    Text(if (resetting) "Keep Holding…" else "Reset", color = Color(0xFFFF6161), fontWeight = FontWeight.Bold)
-                                }
-                            }
-                            LaunchedEffect(resetting) {
-                                if (resetting) {
-                                    delay(300)
-                                    resetting = false
+                                    Text(
+                                        if (resetting) "Keep Holding…" else "Reset",
+                                        color = Color(0xFFFF6161),
+                                        fontWeight = FontWeight.Bold,
+                                    )
                                 }
                             }
 

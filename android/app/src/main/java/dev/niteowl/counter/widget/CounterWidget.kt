@@ -11,6 +11,7 @@ import androidx.glance.action.actionParametersOf
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
+import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.action.actionStartActivity
@@ -41,6 +42,8 @@ import dev.niteowl.counter.data.CounterCommand
 import dev.niteowl.counter.data.CounterStore
 
 class CounterWidget : GlanceAppWidget() {
+    override val sizeMode: SizeMode = SizeMode.Exact
+
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val store = CounterStore(context)
         val selection = store.loadSelection()
@@ -63,8 +66,6 @@ class CounterWidgetReceiver : GlanceAppWidgetReceiver() {
 @Composable
 private fun CounterWidgetContent(context: Context, organizationName: String, count: Int?) {
     val size = LocalSize.current
-    // Pixel Launcher reports a 3-cell-wide widget below the old 220dp cutoff.
-    // Treat anything materially wider than the 2x2 compact widget as medium.
     val medium = size.width >= 170.dp
     val openApp = actionStartActivity(
         Intent(context, MainActivity::class.java).apply {

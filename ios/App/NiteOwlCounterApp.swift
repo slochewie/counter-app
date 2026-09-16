@@ -10,6 +10,11 @@ struct NiteOwlCounterApp: App {
                 .task {
                     await model.restore()
                 }
+                .onOpenURL { url in
+                    Task {
+                        await model.open(url)
+                    }
+                }
         }
     }
 }

@@ -7,7 +7,7 @@ data class OAuthConfig(
     val counterBaseUrl: String,
 ) {
     companion object {
-        const val CLIENT_ID = "ANDROID_OAUTH_CLIENT_ID_PLACEHOLDER"
+        const val CLIENT_ID = "7cz88wxAnSHJC-EFHETaw5nPzatGqGnY"
         const val REDIRECT_URI = "dev.niteowl.counter.android:/oauth/callback"
         const val CALLBACK_SCHEME = "dev.niteowl.counter.android"
         val SCOPES = listOf("openid", "offline_access", "counter:read", "counter:write")

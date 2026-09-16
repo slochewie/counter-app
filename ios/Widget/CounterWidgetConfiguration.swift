@@ -7,6 +7,10 @@ struct CounterWidgetConfigurationIntent: WidgetConfigurationIntent {
     @Parameter(title: "Counter")
     var counter: CounterWidgetEntity?
 
+    static var parameterSummary: some ParameterSummary {
+        Summary("Show \(\.$counter)")
+    }
+
     init() {}
 
     init(counter: CounterWidgetEntity?) {

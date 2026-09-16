@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import androidx.core.net.toUri
+import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.niteowl.counter.api.CounterApiClient
@@ -15,6 +16,7 @@ import dev.niteowl.counter.data.CounterEnvironment
 import dev.niteowl.counter.data.CounterSelection
 import dev.niteowl.counter.data.CounterSnapshot
 import dev.niteowl.counter.data.CounterStore
+import dev.niteowl.counter.widget.CounterWidget
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -40,11 +42,13 @@ class CounterViewModel : ViewModel() {
     private var oauth: OAuthClient? = null
     private var api: CounterApiClient? = null
     private var store: CounterStore? = null
+    private var appContext: Context? = null
     private var pendingEnvironment: CounterEnvironment? = null
     private var pollingJob: Job? = null
 
     fun initialize(context: Context) {
         if (oauth != null) return
+        appContext = context.applicationContext
         store = CounterStore(context.applicationContext)
         oauth = OAuthClient(TokenStore(context.applicationContext))
         api = CounterApiClient(requireNotNull(oauth))
@@ -103,8 +107,7 @@ class CounterViewModel : ViewModel() {
         val selection = mutableState.value.selected ?: return
         try {
             val snapshot = withContext(Dispatchers.IO) { requireNotNull(api).state(selection) }
-            store?.saveSnapshot(snapshot)
-            mutableState.value = mutableState.value.copy(snapshot = snapshot)
+            saveSnapshot(snapshot)
         } catch (error: Throwable) {
             if (!silent) throw error
         }
@@ -113,8 +116,13 @@ class CounterViewModel : ViewModel() {
     fun send(command: CounterCommand) = launchBusy {
         val selection = mutableState.value.selected ?: return@launchBusy
         val snapshot = withContext(Dispatchers.IO) { requireNotNull(api).send(selection, command) }
+        saveSnapshot(snapshot)
+    }
+
+    private suspend fun saveSnapshot(snapshot: CounterSnapshot) {
         store?.saveSnapshot(snapshot)
         mutableState.value = mutableState.value.copy(snapshot = snapshot)
+        appContext?.let { CounterWidget().updateAll(it) }
     }
 
     fun signOut() {
@@ -122,6 +130,9 @@ class CounterViewModel : ViewModel() {
         oauth?.clear()
         store?.clear()
         mutableState.value = UiState()
+        appContext?.let { context ->
+            viewModelScope.launch { CounterWidget().updateAll(context) }
+        }
     }
 
     fun clearError() {

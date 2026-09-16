@@ -2,6 +2,7 @@ package dev.niteowl.counter.widget
 
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
@@ -77,33 +78,39 @@ private fun CounterWidgetContent(context: Context, organizationName: String, cou
         modifier = GlanceModifier
             .fillMaxSize()
             .background(ColorProvider(Color(0xFF111116)))
-            .padding(16.dp)
-            .clickable(openApp),
+            .padding(16.dp),
         verticalAlignment = Alignment.Vertical.CenterVertically,
         horizontalAlignment = Alignment.Horizontal.CenterHorizontally,
     ) {
-        Text(
-            text = organizationName,
-            modifier = GlanceModifier.fillMaxWidth(),
-            style = TextStyle(
-                color = ColorProvider(Color(0xFFF5F5F7)),
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
-                textAlign = TextAlign.Center,
-            ),
-            maxLines = 1,
-        )
-        Spacer(GlanceModifier.height(8.dp))
-        Text(
-            text = count?.toString() ?: "—",
-            modifier = GlanceModifier.fillMaxWidth(),
-            style = TextStyle(
-                color = ColorProvider(Color.White),
-                fontSize = if (medium) 48.sp else 42.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-            ),
-        )
+        Column(
+            modifier = GlanceModifier
+                .fillMaxWidth()
+                .clickable(openApp),
+            horizontalAlignment = Alignment.Horizontal.CenterHorizontally,
+        ) {
+            Text(
+                text = organizationName,
+                modifier = GlanceModifier.fillMaxWidth(),
+                style = TextStyle(
+                    color = ColorProvider(Color(0xFFF5F5F7)),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    textAlign = TextAlign.Center,
+                ),
+                maxLines = 1,
+            )
+            Spacer(GlanceModifier.height(8.dp))
+            Text(
+                text = count?.toString() ?: "—",
+                modifier = GlanceModifier.fillMaxWidth(),
+                style = TextStyle(
+                    color = ColorProvider(Color.White),
+                    fontSize = if (medium) 48.sp else 42.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                ),
+            )
+        }
 
         if (medium && count != null) {
             Spacer(GlanceModifier.height(10.dp))
@@ -156,20 +163,33 @@ private val CommandKey = ActionParameters.Key<String>("command")
 
 class CounterCommandAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
-        val command = when (parameters[CommandKey]) {
+        val rawCommand = parameters[CommandKey]
+        Log.d("NiteOwlCounter", "Widget action received: $rawCommand")
+
+        val command = when (rawCommand) {
             CounterCommand.INCREMENT.wireValue -> CounterCommand.INCREMENT
             CounterCommand.DECREMENT.wireValue -> CounterCommand.DECREMENT
-            else -> return
+            else -> {
+                Log.e("NiteOwlCounter", "Widget action missing or invalid command: $rawCommand")
+                return
+            }
         }
         val store = CounterStore(context)
-        val selection = store.loadSelection() ?: return
+        val selection = store.loadSelection()
+        if (selection == null) {
+            Log.e("NiteOwlCounter", "Widget action has no saved counter selection")
+            return
+        }
         val oauth = OAuthClient(TokenStore(context))
         val api = CounterApiClient(oauth)
 
-        runCatching {
+        try {
             val snapshot = api.send(selection, command)
             store.saveSnapshot(snapshot)
             CounterWidget().update(context, glanceId)
+            Log.d("NiteOwlCounter", "Widget action completed: ${command.wireValue}, count=${snapshot.count}")
+        } catch (error: Throwable) {
+            Log.e("NiteOwlCounter", "Widget action failed: ${command.wireValue}", error)
         }
     }
 }

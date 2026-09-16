@@ -2,6 +2,8 @@ package dev.niteowl.counter.auth
 
 import android.net.Uri
 import dev.niteowl.counter.data.CounterEnvironment
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
@@ -31,7 +33,7 @@ class OAuthClient(private val tokenStore: TokenStore) {
             .build()
     }
 
-    fun exchangeCallback(environment: CounterEnvironment, callback: Uri): OAuthToken {
+    suspend fun exchangeCallback(environment: CounterEnvironment, callback: Uri): OAuthToken {
         val error = callback.getQueryParameter("error")
         if (error != null) error("OAuth failed: ${callback.getQueryParameter("error_description") ?: error}")
 
@@ -55,7 +57,7 @@ class OAuthClient(private val tokenStore: TokenStore) {
         return token
     }
 
-    fun validAccessToken(environment: CounterEnvironment): String {
+    suspend fun validAccessToken(environment: CounterEnvironment): String {
         val token = tokenStore.load(environment.name) ?: error("Sign in required.")
         val now = System.currentTimeMillis() / 1000
         if (token.expiresAtEpochSeconds > now + 60 || token.refreshToken.isNullOrBlank()) return token.accessToken
@@ -76,7 +78,7 @@ class OAuthClient(private val tokenStore: TokenStore) {
 
     fun clear() = tokenStore.clear()
 
-    private fun postForm(url: String, fields: Map<String, String>): OAuthToken {
+    private suspend fun postForm(url: String, fields: Map<String, String>): OAuthToken = withContext(Dispatchers.IO) {
         val body = fields.entries.joinToString("&") { (key, value) ->
             "${URLEncoder.encode(key, Charsets.UTF_8)}=${URLEncoder.encode(value, Charsets.UTF_8)}"
         }
@@ -87,13 +89,14 @@ class OAuthClient(private val tokenStore: TokenStore) {
             setRequestProperty("Accept", "application/json")
         }
         connection.outputStream.use { it.write(body.toByteArray()) }
-        val responseText = (if (connection.responseCode in 200..299) connection.inputStream else connection.errorStream)
+        val responseCode = connection.responseCode
+        val responseText = (if (responseCode in 200..299) connection.inputStream else connection.errorStream)
             .bufferedReader().use { it.readText() }
-        if (connection.responseCode !in 200..299) error("OAuth token request failed: $responseText")
+        if (responseCode !in 200..299) error("OAuth token request failed: $responseText")
 
         val json = JSONObject(responseText)
         val expiresIn = json.optLong("expires_in", 3600L)
-        return OAuthToken(
+        OAuthToken(
             accessToken = json.getString("access_token"),
             refreshToken = json.optString("refresh_token").ifBlank { null },
             expiresAtEpochSeconds = System.currentTimeMillis() / 1000 + expiresIn,

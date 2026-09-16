@@ -2,6 +2,7 @@ package dev.niteowl.counter.ui
 
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -143,9 +144,10 @@ class CounterViewModel : ViewModel() {
             try {
                 block()
             } catch (error: Throwable) {
+                Log.e("NiteOwlCounter", "Counter operation failed", error)
                 mutableState.value = mutableState.value.copy(
                     signedIn = if (showErrors) mutableState.value.signedIn else false,
-                    error = if (showErrors) error.message ?: "Unknown error" else null,
+                    error = if (showErrors) error.message ?: "${error::class.java.simpleName}: ${error}" else null,
                 )
             } finally {
                 mutableState.value = mutableState.value.copy(busy = false)

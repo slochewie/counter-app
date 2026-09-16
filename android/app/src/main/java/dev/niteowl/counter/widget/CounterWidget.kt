@@ -4,6 +4,11 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.LocalSize
@@ -17,7 +22,9 @@ import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.provideContent
+import androidx.glance.appwidget.state.updateAppWidgetState
 import androidx.glance.background
+import androidx.glance.currentState
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Column
 import androidx.glance.layout.Row
@@ -27,14 +34,12 @@ import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.layout.size
+import androidx.glance.state.PreferencesGlanceStateDefinition
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import dev.niteowl.counter.MainActivity
 import dev.niteowl.counter.api.CounterApiClient
 import dev.niteowl.counter.auth.OAuthClient
@@ -42,22 +47,32 @@ import dev.niteowl.counter.auth.TokenStore
 import dev.niteowl.counter.data.CounterCommand
 import dev.niteowl.counter.data.CounterStore
 
+private val OrganizationNameKey = stringPreferencesKey("organizationName")
+private val CountKey = intPreferencesKey("count")
+private val CommandKey = ActionParameters.Key<String>("command")
+
 class CounterWidget : GlanceAppWidget() {
     override val sizeMode: SizeMode = SizeMode.Exact
+    override val stateDefinition = PreferencesGlanceStateDefinition
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        provideContent {
-            // Read persisted counter data inside the Glance composition so every
-            // update() recomposition sees the newest snapshot instead of values
-            // captured when provideGlance() first started.
-            val store = CounterStore(context)
-            val selection = store.loadSelection()
-            val snapshot = selection?.let(store::loadSnapshot)
+        val store = CounterStore(context)
+        val selection = store.loadSelection()
+        val snapshot = selection?.let(store::loadSnapshot)
 
+        updateAppWidgetState(context, id) { preferences ->
+            selection?.organizationName?.let { preferences[OrganizationNameKey] = it }
+            snapshot?.count?.let { preferences[CountKey] = it }
+        }
+
+        provideContent {
+            val preferences = currentState<androidx.datastore.preferences.core.Preferences>()
             CounterWidgetContent(
                 context = context,
-                organizationName = selection?.organizationName ?: "NiteOwl Counter",
-                count = snapshot?.count,
+                organizationName = preferences[OrganizationNameKey]
+                    ?: selection?.organizationName
+                    ?: "NiteOwl Counter",
+                count = preferences[CountKey] ?: snapshot?.count,
             )
         }
     }
@@ -162,8 +177,6 @@ private fun WidgetButton(label: String, background: Color, foreground: Color, co
     )
 }
 
-private val CommandKey = ActionParameters.Key<String>("command")
-
 class CounterCommandAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
         val rawCommand = parameters[CommandKey]
@@ -189,8 +202,15 @@ class CounterCommandAction : ActionCallback {
         try {
             val snapshot = api.send(selection, command)
             store.saveSnapshot(snapshot)
+            updateAppWidgetState(context, glanceId) { preferences ->
+                preferences[OrganizationNameKey] = selection.organizationName
+                preferences[CountKey] = snapshot.count
+            }
             CounterWidget().update(context, glanceId)
-            Log.d("NiteOwlCounter", "Widget action completed: ${command.wireValue}, count=${snapshot.count}")
+            Log.d(
+                "NiteOwlCounter",
+                "Widget action completed and state updated: ${command.wireValue}, count=${snapshot.count}",
+            )
         } catch (error: Throwable) {
             Log.e("NiteOwlCounter", "Widget action failed: ${command.wireValue}", error)
         }

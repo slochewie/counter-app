@@ -1,6 +1,7 @@
 package dev.niteowl.counter.widget
 
 import android.content.Context
+import android.content.Intent
 import androidx.compose.runtime.Composable
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
@@ -47,6 +48,7 @@ class CounterWidget : GlanceAppWidget() {
 
         provideContent {
             CounterWidgetContent(
+                context = context,
                 organizationName = selection?.organizationName ?: "NiteOwl Counter",
                 count = snapshot?.count,
             )
@@ -59,10 +61,14 @@ class CounterWidgetReceiver : GlanceAppWidgetReceiver() {
 }
 
 @Composable
-private fun CounterWidgetContent(organizationName: String, count: Int?) {
+private fun CounterWidgetContent(context: Context, organizationName: String, count: Int?) {
     val size = LocalSize.current
     val medium = size.width >= 220.dp
-    val openApp = actionStartActivity<MainActivity>()
+    val openApp = actionStartActivity(
+        Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        },
+    )
 
     Column(
         modifier = GlanceModifier

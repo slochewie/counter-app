@@ -35,6 +35,41 @@ final class CounterAppModel: ObservableObject {
         }
     }
 
+    func open(_ url: URL) async {
+        guard url.scheme == "dev.niteowl.counter",
+              url.path == "/counter",
+              let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              let environmentValue = components.queryItems?.first(where: { $0.name == "environment" })?.value,
+              let organizationID = components.queryItems?.first(where: { $0.name == "organizationId" })?.value,
+              let counterID = components.queryItems?.first(where: { $0.name == "counterId" })?.value,
+              let environment = CounterEnvironment(rawValue: environmentValue)
+        else {
+            return
+        }
+
+        do {
+            _ = try await CounterRuntime.oauthClient(for: environment).validAccessToken()
+            signedIn = true
+
+            let available = try await CounterRuntime
+                .apiClient(for: environment)
+                .availableCounters(in: environment)
+            selections = available
+
+            guard let selection = available.first(where: {
+                $0.organizationID == organizationID && $0.counterID == counterID
+            }) else {
+                errorMessage = "This Counter is no longer available to your account."
+                return
+            }
+
+            try select(selection)
+            await refresh()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     func signIn(environment: CounterEnvironment) async {
         busy = true
         errorMessage = nil

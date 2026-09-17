@@ -16,6 +16,7 @@ import { counterLocationIdForOrganization } from "#/lib/counter-locations.ts";
 import { useCounterMqtt } from "#/lib/use-counter-mqtt.ts";
 
 export const Route = createFileRoute("/")({
+  head: () => ({ meta: [{ title: "Capacity Counter" }] }),
   component: CounterApp,
 });
 
@@ -31,7 +32,7 @@ function CounterSessionSkeleton() {
           <div className="flex size-10 shrink-0 items-center justify-center rounded-full border border-zinc-800 bg-zinc-900 text-zinc-400 shadow-sm">
             <GaugeIcon className="size-5" />
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight">Counter</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Capacity Counter</h1>
         </div>
         <Card className="overflow-hidden border-zinc-800 bg-zinc-900 text-zinc-50 shadow-2xl shadow-black/20">
           <CardHeader className="border-b border-zinc-800 px-4 py-2.5 sm:px-6 sm:py-4">
@@ -210,7 +211,7 @@ function CounterApp() {
           <div className="flex size-10 shrink-0 items-center justify-center rounded-full border border-zinc-800 bg-zinc-900 text-zinc-400 shadow-sm">
             <GaugeIcon className="size-5" />
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight">Counter</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Capacity Counter</h1>
         </div>
         <Card className="overflow-hidden border-zinc-800 bg-zinc-900 text-zinc-50 shadow-2xl shadow-black/20">
           <CardHeader className="border-b border-zinc-800 px-4 py-2.5 sm:px-6 sm:py-4">

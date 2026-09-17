@@ -35,6 +35,7 @@ import {
 import { countersForOrganization } from "#/lib/counter-locations.ts";
 
 export const Route = createFileRoute("/assignments")({
+  head: () => ({ meta: [{ title: "Capacity Counter Assignments" }] }),
   component: CounterAssignments,
 });
 
@@ -387,7 +388,7 @@ function CounterAssignments() {
           <UsersIcon />
         </div>
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Assignments</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Capacity Counter Assignments</h1>
           <p className="text-sm text-muted-foreground">
             Manage Counter access for active organization members.
           </p>

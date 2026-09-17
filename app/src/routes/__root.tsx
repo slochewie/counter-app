@@ -66,7 +66,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
         content: 'Counter',
       },
       {
-        title: 'NiteOwl.dev Counter',
+        title: 'Capacity Counter',
       },
     ],
     links: [

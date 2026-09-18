@@ -1,5 +1,7 @@
 import mqtt, { type MqttClient } from "mqtt";
 
+import { sendFcmStateToCounter } from "#/lib/fcm-send.server.ts";
+
 export type CounterCommand = "increment" | "decrement" | "reset";
 
 export type CounterState = {
@@ -212,5 +214,61 @@ export async function sendCounterCommand(
       );
     },
     { ignoreRetained: true },
+  );
+}
+
+
+let stateListener: MqttClient | null = null;
+
+export function ensureCounterStatePushListener() {
+  if (stateListener) return stateListener;
+
+  const { host, username, password } = mqttConfig();
+  const client = mqtt.connect(host, {
+    username,
+    password,
+    reconnectPeriod: 5000,
+    clean: true,
+    clientId: `counter_push_${Math.random().toString(16).slice(2)}`,
+  });
+  stateListener = client;
+
+  client.on("connect", () => {
+    client.subscribe("counters/+/capacity/state", (error) => {
+      if (error) {
+        console.error("Counter FCM MQTT subscribe failed", error);
+      } else {
+        console.log("Counter FCM MQTT listener subscribed");
+      }
+    });
+  });
+
+  client.on("message", (topic, message) => {
+    const match = /^counters\/([A-Za-z0-9_-]+)\/capacity\/state$/.exec(topic);
+    if (!match) return;
+
+    const state = parseCounterState(message);
+    if (!state) return;
+
+    const counterId = match[1];
+    void sendFcmStateToCounterByCounterId(counterId, state.count).catch((error) => {
+      console.error("Counter FCM state delivery failed", error);
+    });
+  });
+
+  client.on("error", (error) => {
+    console.error("Counter FCM MQTT listener error", error);
+  });
+
+  return client;
+}
+
+async function sendFcmStateToCounterByCounterId(counterId: string, count: number) {
+  const { listOrganizationIdsForCounter } = await import("#/lib/push-store.server.ts");
+  const organizationIds = listOrganizationIdsForCounter(counterId);
+  await Promise.all(
+    organizationIds.map((organizationId) =>
+      sendFcmStateToCounter(organizationId, counterId, count),
+    ),
   );
 }

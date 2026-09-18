@@ -8,6 +8,12 @@ export type EligibleOrganizationMember = {
   role: string;
 };
 
+export type CounterDefinition = {
+  id: string;
+  name: string;
+  enabled: boolean;
+};
+
 export type CounterAssignment = {
   userId: string;
   counterIds: string[];
@@ -20,6 +26,11 @@ export type CounterManagementAccess = {
 
 type EligibleMembersResponse = {
   members?: EligibleOrganizationMember[];
+  error?: string;
+};
+
+type CounterDefinitionsResponse = {
+  counters?: CounterDefinition[];
   error?: string;
 };
 
@@ -93,6 +104,27 @@ export async function listEligibleOrganizationMembers(organizationId: string) {
   }
 
   return Array.isArray(result.members) ? result.members : [];
+}
+
+export async function listCounters(organizationId: string) {
+  const response = await fetch(
+    authEndpointWithOrganization("/api/auth/counter/list", organizationId),
+    {
+      credentials: "include",
+    },
+  );
+
+  const result = (await response.json()) as CounterDefinitionsResponse;
+
+  if (!response.ok) {
+    throw new Error(
+      typeof result.error === "string"
+        ? result.error
+        : "Unable to load Counters.",
+    );
+  }
+
+  return Array.isArray(result.counters) ? result.counters : [];
 }
 
 export async function listCounterAssignments(organizationId: string) {

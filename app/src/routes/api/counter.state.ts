@@ -5,7 +5,7 @@ import {
   hasCounterScope,
   userCanAccessCounter,
 } from "#/lib/push-auth.server.ts";
-import { getCounterState } from "#/lib/counter-mqtt.server.ts";
+import { ensureCounterStatePushListener, getCounterState } from "#/lib/counter-mqtt.server.ts";
 
 function jsonError(message: string, status: number) {
   return Response.json({ error: message }, { status });
@@ -15,6 +15,7 @@ export const Route = createFileRoute("/api/counter/state")({
   server: {
     handlers: {
       GET: async ({ request }: { request: Request }) => {
+        ensureCounterStatePushListener();
         const userId = await getAuthenticatedUserId(request);
 
         if (!userId) {

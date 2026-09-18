@@ -11,8 +11,7 @@ import {
 } from "#/components/ui/card.tsx";
 import { Skeleton } from "#/components/ui/skeleton.tsx";
 import { authBaseURL, authClient } from "#/lib/auth-client.ts";
-import { getCounterAccess } from "#/lib/counter-access.ts";
-import { counterLocationIdForOrganization } from "#/lib/counter-locations.ts";
+import type { CounterDefinition } from "#/lib/counter-access.ts";
 import { useCounterMqtt } from "#/lib/use-counter-mqtt.ts";
 
 export const Route = createFileRoute("/")({
@@ -75,13 +74,17 @@ function CounterApp() {
   const [isResetHolding, setIsResetHolding] = useState(false);
   const [counterAccessState, setCounterAccessState] =
     useState<CounterAccessState>("idle");
+  const [availableCounters, setAvailableCounters] = useState<CounterDefinition[]>([]);
+  const [selectedCounterId, setSelectedCounterId] = useState<string | null>(null);
   const [counterAccessError, setCounterAccessError] = useState<string | null>(
     null,
   );
   const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const locationId = activeOrganization
-    ? counterLocationIdForOrganization(activeOrganization.name)
-    : null;
+  const selectedCounter =
+    availableCounters.find((counter) => counter.id === selectedCounterId) ??
+    availableCounters[0] ??
+    null;
+  const locationId = selectedCounter?.id ?? null;
   const actor = session
     ? {
         id: session.user.id,
@@ -126,7 +129,9 @@ function CounterApp() {
   ]);
 
   useEffect(() => {
-    if (!session || !activeOrganization || !locationId) {
+    if (!session || !activeOrganization) {
+      setAvailableCounters([]);
+      setSelectedCounterId(null);
       setCounterAccessState("idle");
       setCounterAccessError(null);
       return;
@@ -137,29 +142,58 @@ function CounterApp() {
     setCounterAccessState("loading");
     setCounterAccessError(null);
 
-    void getCounterAccess(activeOrganization.id, locationId, controller.signal)
-      .then((allowed) => {
-        if (controller.signal.aborted) {
-          return;
+    void fetch("/api/counter/available", {
+      credentials: "include",
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        const result = (await response.json()) as {
+          counters?: Array<{
+            organizationId: string;
+            counterId: string;
+            counterName: string;
+          }>;
+          error?: string;
+        };
+
+        if (!response.ok) {
+          throw new Error(result.error ?? "Unable to load available Counters.");
         }
 
-        setCounterAccessState(allowed ? "allowed" : "denied");
+        return (result.counters ?? [])
+          .filter((counter) => counter.organizationId === activeOrganization.id)
+          .map((counter) => ({
+            id: counter.counterId,
+            name: counter.counterName,
+            enabled: true,
+          }));
+      })
+      .then((counters) => {
+        if (controller.signal.aborted) return;
+
+        setAvailableCounters(counters);
+        setSelectedCounterId((current) =>
+          current && counters.some((counter) => counter.id === current)
+            ? current
+            : counters[0]?.id ?? null,
+        );
+        setCounterAccessState(counters.length > 0 ? "allowed" : "denied");
       })
       .catch((error: unknown) => {
-        if (controller.signal.aborted) {
-          return;
-        }
+        if (controller.signal.aborted) return;
 
+        setAvailableCounters([]);
+        setSelectedCounterId(null);
         setCounterAccessState("error");
         setCounterAccessError(
           error instanceof Error
             ? error.message
-            : "Unable to verify Counter access.",
+            : "Unable to load available Counters.",
         );
       });
 
     return () => controller.abort();
-  }, [activeOrganization, locationId, session]);
+  }, [activeOrganization, session]);
 
   useEffect(() => {
     return () => {
@@ -215,7 +249,25 @@ function CounterApp() {
         </div>
         <Card className="overflow-hidden border-zinc-800 bg-zinc-900 text-zinc-50 shadow-2xl shadow-black/20">
           <CardHeader className="border-b border-zinc-800 px-4 py-2.5 sm:px-6 sm:py-4">
-            <div className="flex items-center justify-end gap-4">
+            <div className="flex items-center justify-between gap-4">
+              {availableCounters.length > 1 ? (
+                <select
+                  value={selectedCounter?.id ?? ""}
+                  onChange={(event) => setSelectedCounterId(event.target.value)}
+                  className="min-w-0 rounded-md border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-sm text-zinc-200"
+                  aria-label="Counter"
+                >
+                  {availableCounters.map((counter) => (
+                    <option key={counter.id} value={counter.id}>
+                      {counter.name}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <span className="truncate text-sm font-medium text-zinc-300">
+                  {selectedCounter?.name ?? ""}
+                </span>
+              )}
               <div className="flex shrink-0 items-center gap-2 text-xs font-medium text-zinc-400">
                 <span
                   className={`h-2.5 w-2.5 rounded-full ${
@@ -228,12 +280,7 @@ function CounterApp() {
           </CardHeader>
 
           <CardContent className="space-y-3 p-4 sm:space-y-5 sm:p-6">
-            {activeOrganization && !locationId ? (
-              <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-4 text-sm text-zinc-400">
-                This organization does not have a Counter location configured yet.
-              </div>
-            ) : activeOrganization &&
-              locationId &&
+            {activeOrganization &&
               (counterAccessState === "idle" ||
                 counterAccessState === "loading") ? (
               <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-4 text-sm text-zinc-400">
@@ -241,7 +288,7 @@ function CounterApp() {
               </div>
             ) : activeOrganization && counterAccessState === "denied" ? (
               <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-4 text-sm text-zinc-300">
-                You don&apos;t have access to this Counter in this organization.
+                You don&apos;t have access to a Counter in this organization.
               </div>
             ) : activeOrganization && counterAccessState === "error" ? (
               <div className="rounded-xl border border-red-900/60 bg-red-950/30 p-4 text-sm text-red-200">

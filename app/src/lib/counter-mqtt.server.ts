@@ -221,9 +221,14 @@ export async function sendCounterCommand(
 let stateListener: MqttClient | null = null;
 
 export function ensureCounterStatePushListener() {
-  if (stateListener) return stateListener;
+  if (stateListener) {
+    console.log("Counter FCM MQTT listener already initialized");
+    return stateListener;
+  }
 
+  console.log("Counter FCM MQTT listener initializing");
   const { host, username, password } = mqttConfig();
+  console.log("Counter FCM MQTT connecting", host);
   const client = mqtt.connect(host, {
     username,
     password,
@@ -234,6 +239,7 @@ export function ensureCounterStatePushListener() {
   stateListener = client;
 
   client.on("connect", () => {
+    console.log("Counter FCM MQTT connected");
     client.subscribe("counters/+/capacity/state", (error) => {
       if (error) {
         console.error("Counter FCM MQTT subscribe failed", error);
@@ -258,6 +264,14 @@ export function ensureCounterStatePushListener() {
 
   client.on("error", (error) => {
     console.error("Counter FCM MQTT listener error", error);
+  });
+
+  client.on("close", () => {
+    console.warn("Counter FCM MQTT listener connection closed");
+  });
+
+  client.on("offline", () => {
+    console.warn("Counter FCM MQTT listener offline");
   });
 
   return client;

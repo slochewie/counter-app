@@ -1,7 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { ensureCounterStatePushListener } from "#/lib/counter-mqtt.server.ts";
-
 import {
   getAuthenticatedUserId,
   userCanAccessCounter,
@@ -25,7 +23,6 @@ export const Route = createFileRoute("/api/push/fcm")({
   server: {
     handlers: {
       POST: async ({ request }: { request: Request }) => {
-        ensureCounterStatePushListener();
         const userId = await getAuthenticatedUserId(request);
         if (!userId) return jsonError("Unauthorized", 401);
 

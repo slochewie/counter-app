@@ -142,10 +142,13 @@ function CounterApp() {
     setCounterAccessState("loading");
     setCounterAccessError(null);
 
-    void fetch("/api/counter/available", {
-      credentials: "include",
-      signal: controller.signal,
-    })
+    void fetch(
+      `${authBaseURL.replace(/\/$/, "")}/api/auth/counter/available`,
+      {
+        credentials: "include",
+        signal: controller.signal,
+      },
+    )
       .then(async (response) => {
         const result = (await response.json()) as {
           counters?: Array<{

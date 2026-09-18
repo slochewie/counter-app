@@ -2,6 +2,23 @@
 
 services:
 
+  counter-push:
+    image: 'node:26-trixie'
+    working_dir: /app
+    command:
+      - node
+      - --experimental-strip-types
+      - src/server/counter-push.ts
+    volumes:
+      - './app:/app'
+      - './firebase-admin.json:/run/secrets/firebase-admin.json:ro'
+    env_file:
+      - .env-counter-app
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/firebase-admin.json
+    restart: unless-stopped
+    networks: [niteowl-dev]
+
   counter-app:
     image: 'node:26-trixie'
     working_dir: /app

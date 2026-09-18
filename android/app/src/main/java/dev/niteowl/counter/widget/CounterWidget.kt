@@ -78,6 +78,18 @@ class CounterWidget : GlanceAppWidget() {
     }
 }
 
+suspend fun updateCounterWidgets(context: Context, organizationName: String, count: Int) {
+    val manager = androidx.glance.appwidget.GlanceAppWidgetManager(context)
+    val widget = CounterWidget()
+    manager.getGlanceIds(CounterWidget::class.java).forEach { glanceId ->
+        updateAppWidgetState(context, glanceId) { preferences ->
+            preferences[OrganizationNameKey] = organizationName
+            preferences[CountKey] = count
+        }
+        widget.update(context, glanceId)
+    }
+}
+
 class CounterWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = CounterWidget()
 }

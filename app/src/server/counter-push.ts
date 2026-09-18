@@ -20,7 +20,7 @@ const client = mqtt.connect(host, {
   password,
   reconnectPeriod: 0,
   clean: true,
-  clientId: "counter_push_fcm_bridge",
+  clientId: "counter_push_fcm_bridge_v2",
 });
 
 client.on("connect", () => {

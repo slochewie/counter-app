@@ -27,12 +27,12 @@ import {
   type EligibleOrganizationMember,
   getCounterManagementAccess,
   listCounterAssignments,
+  listCounters,
   listCounterManagers,
   listEligibleOrganizationMembers,
   updateCounterAssignment,
   updateCounterManager,
 } from "#/lib/counter-access.ts";
-import { countersForOrganization } from "#/lib/counter-locations.ts";
 
 export const Route = createFileRoute("/assignments")({
   head: () => ({ meta: [{ title: "Capacity Counter Assignments" }] }),
@@ -49,6 +49,7 @@ function CounterAssignments() {
   } = authClient.useActiveOrganization();
   const [members, setMembers] = useState<EligibleOrganizationMember[]>([]);
   const [assignments, setAssignments] = useState<CounterAssignment[]>([]);
+  const [counters, setCounters] = useState<import("#/lib/counter-access.ts").CounterDefinition[]>([]);
   const [managerUserIds, setManagerUserIds] = useState<string[]>([]);
   const [globalAdminUserIds, setGlobalAdminUserIds] = useState<string[]>([]);
   const [managementAccess, setManagementAccess] =
@@ -94,6 +95,7 @@ function CounterAssignments() {
     if (!session || !activeOrganization?.id) {
       setMembers([]);
       setAssignments([]);
+      setCounters([]);
       setManagerUserIds([]);
       setGlobalAdminUserIds([]);
       setManagementAccess(null);
@@ -136,6 +138,11 @@ function CounterAssignments() {
           .then((value) => ({ ok: true as const, value }))
           .catch((error: unknown) => ({ ok: false as const, error }));
 
+        const counterResult = await Promise.resolve()
+          .then(() => listCounters(activeOrganization.id))
+          .then((value) => ({ ok: true as const, value }))
+          .catch((error: unknown) => ({ ok: false as const, error }));
+
         const assignmentResult = await Promise.resolve()
           .then(() => listCounterAssignments(activeOrganization.id))
           .then((value) => ({ ok: true as const, value }))
@@ -156,6 +163,15 @@ function CounterAssignments() {
           setMembers([]);
           errors.push(
             `Members: ${memberResult.error instanceof Error ? memberResult.error.message : "Unable to load active organization members."}`,
+          );
+        }
+
+        if (counterResult.ok) {
+          setCounters(counterResult.value.filter((counter) => counter.enabled));
+        } else {
+          setCounters([]);
+          errors.push(
+            `Counters: ${counterResult.error instanceof Error ? counterResult.error.message : "Unable to load Counters."}`,
           );
         }
 
@@ -195,6 +211,7 @@ function CounterAssignments() {
         ) {
           setMembers([]);
           setAssignments([]);
+          setCounters([]);
           setManagerUserIds([]);
           setGlobalAdminUserIds([]);
           setManagementAccess(null);
@@ -215,10 +232,6 @@ function CounterAssignments() {
       controller.abort();
     };
   }, [activeOrganization?.id, isGlobalAdmin, session]);
-
-  const counters = activeOrganization
-    ? countersForOrganization(activeOrganization.name)
-    : [];
 
   const assignmentMap = useMemo(
     () =>

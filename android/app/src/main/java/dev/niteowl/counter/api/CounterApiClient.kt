@@ -11,6 +11,8 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class CounterApiClient(private val oauth: OAuthClient) {
     suspend fun availableCounters(environment: CounterEnvironment): List<CounterSelection> {
@@ -67,7 +69,7 @@ class CounterApiClient(private val oauth: OAuthClient) {
         count = count,
     )
 
-    private suspend fun request(environment: CounterEnvironment, url: String, method: String, body: String? = null): String {
+    private suspend fun request(environment: CounterEnvironment, url: String, method: String, body: String? = null): String = withContext(Dispatchers.IO) {
         val connection = (URL(url).openConnection() as HttpURLConnection).apply {
             requestMethod = method
             setRequestProperty("Authorization", "Bearer ${oauth.validAccessToken(environment)}")
@@ -82,7 +84,7 @@ class CounterApiClient(private val oauth: OAuthClient) {
         val response = (if (responseCode in 200..299) connection.inputStream else connection.errorStream)
             .bufferedReader().use { it.readText() }
         if (responseCode !in 200..299) error("Counter API request failed ($responseCode): $response")
-        return response
+        response
     }
 
     private fun encode(value: String): String = URLEncoder.encode(value, Charsets.UTF_8)

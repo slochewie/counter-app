@@ -255,7 +255,7 @@ export function ensureCounterStatePushListener() {
     });
   });
 
-  client.on("message", (topic, message) => {
+  client.on("message", (topic, message, packet) => {
     const match = /^counters\/([A-Za-z0-9_-]+)\/capacity\/state$/.exec(topic);
     if (!match) return;
 
@@ -263,9 +263,25 @@ export function ensureCounterStatePushListener() {
     if (!state) return;
 
     const counterId = match[1];
-    void sendFcmStateToCounterByCounterId(counterId, state.count).catch((error) => {
-      console.error("Counter FCM state delivery failed", error);
+    console.log("Counter FCM MQTT state received", {
+      topic,
+      count: state.count,
+      retain: packet.retain === true,
+      dup: packet.dup === true,
+      qos: packet.qos,
+      updatedBy: state.updatedBy,
     });
+    void sendFcmStateToCounterByCounterId(counterId, state.count)
+      .then((results) => {
+        console.log("Counter FCM state delivery complete", {
+          counterId,
+          count: state.count,
+          results,
+        });
+      })
+      .catch((error) => {
+        console.error("Counter FCM state delivery failed", error);
+      });
   });
 
   client.on("error", (error) => {
@@ -289,9 +305,10 @@ export function ensureCounterStatePushListener() {
 async function sendFcmStateToCounterByCounterId(counterId: string, count: number) {
   const { listOrganizationIdsForCounter } = await import("#/lib/push-store.server.ts");
   const organizationIds = listOrganizationIdsForCounter(counterId);
-  await Promise.all(
-    organizationIds.map((organizationId) =>
-      sendFcmStateToCounter(organizationId, counterId, count),
-    ),
+  return Promise.all(
+    organizationIds.map(async (organizationId) => ({
+      organizationId,
+      result: await sendFcmStateToCounter(organizationId, counterId, count),
+    })),
   );
 }

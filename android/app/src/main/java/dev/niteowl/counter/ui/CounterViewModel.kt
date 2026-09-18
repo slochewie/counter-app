@@ -17,6 +17,8 @@ import dev.niteowl.counter.data.CounterSelection
 import dev.niteowl.counter.data.CounterSnapshot
 import dev.niteowl.counter.data.CounterStore
 import dev.niteowl.counter.widget.CounterWidget
+import com.google.firebase.messaging.FirebaseMessaging
+import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -91,7 +93,10 @@ class CounterViewModel : ViewModel() {
         }
         if (selected != null) store?.saveSelection(selected)
         mutableState.value = mutableState.value.copy(signedIn = true, selections = selections, selected = selected)
-        if (selected != null) refreshInternal(silent = true)
+        if (selected != null) {
+            refreshInternal(silent = true)
+            registerFcmToken(selected)
+        }
         startPolling()
     }
 
@@ -99,6 +104,17 @@ class CounterViewModel : ViewModel() {
         store?.saveSelection(selection)
         mutableState.value = mutableState.value.copy(selected = selection)
         refresh()
+        viewModelScope.launch { registerFcmToken(selection) }
+    }
+
+    private suspend fun registerFcmToken(selection: CounterSelection) {
+        try {
+            val token = FirebaseMessaging.getInstance().token.await()
+            requireNotNull(api).registerFcmToken(selection, token)
+            Log.d("NiteOwlCounter", "FCM registration synced for counter: ${selection.counterId}")
+        } catch (error: Throwable) {
+            Log.e("NiteOwlCounter", "Unable to sync FCM registration", error)
+        }
     }
 
     fun refresh() = launchBusy { refreshInternal(silent = false) }

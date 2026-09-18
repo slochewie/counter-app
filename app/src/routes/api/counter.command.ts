@@ -6,6 +6,7 @@ import {
   userCanAccessCounter,
 } from "#/lib/push-auth.server.ts";
 import {
+  ensureCounterStatePushListener,
   sendCounterCommand,
   type CounterCommand,
 } from "#/lib/counter-mqtt.server.ts";
@@ -24,6 +25,7 @@ export const Route = createFileRoute("/api/counter/command")({
   server: {
     handlers: {
       POST: async ({ request }: { request: Request }) => {
+        ensureCounterStatePushListener();
         const userId = await getAuthenticatedUserId(request);
 
         if (!userId) {

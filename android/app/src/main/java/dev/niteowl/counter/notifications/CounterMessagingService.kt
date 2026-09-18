@@ -19,6 +19,11 @@ class CounterMessagingService : FirebaseMessagingService() {
     override fun onMessageReceived(message: RemoteMessage) {
         super.onMessageReceived(message)
 
+        Log.d(
+            "NiteOwlCounter",
+            "FCM received messageId=${message.messageId} sentTime=${message.sentTime} from=${message.from}",
+        )
+
         val data = message.data
         val count = data["count"]?.toIntOrNull()
         if (count == null) {

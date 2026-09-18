@@ -1,6 +1,9 @@
 package dev.niteowl.counter.notifications
 
 import android.util.Log
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import dev.niteowl.counter.data.CounterSnapshot
@@ -46,7 +49,9 @@ class CounterMessagingService : FirebaseMessagingService() {
             count = count,
         )
         store.saveSnapshot(snapshot)
-        updateCounterWidgets(applicationContext, selection.organizationName, count)
+        CoroutineScope(Dispatchers.IO).launch {
+            updateCounterWidgets(applicationContext, selection.organizationName, count)
+        }
         Log.d("NiteOwlCounter", "FCM counter state applied: count=$count")
     }
 }

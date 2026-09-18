@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { PencilIcon, PlusIcon, SearchIcon, UsersIcon } from "lucide-react";
 
 import { Badge } from "#/components/ui/badge.tsx";
+import { Button } from "#/components/ui/button.tsx";
 import {
   Card,
   CardContent,

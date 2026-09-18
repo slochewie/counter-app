@@ -229,12 +229,38 @@ async function verifyJwt(request: Request): Promise<VerifiedCounterToken | null>
   }
 }
 
+async function getSessionUserId(request: Request) {
+  const cookie = request.headers.get("cookie");
+
+  if (!cookie) return null;
+
+  const response = await fetch(`${getAuthBaseUrl(request)}/api/auth/get-session`, {
+    headers: { cookie },
+  });
+
+  if (!response.ok) return null;
+
+  const result = (await response.json()) as {
+    user?: { id?: string };
+  };
+
+  return typeof result.user?.id === "string" ? result.user.id : null;
+}
+
 export async function getAuthenticatedUserId(request: Request) {
-  const verified = await verifyJwt(request);
-  return verified?.payload.sub ?? null;
+  if (bearerToken(request)) {
+    const verified = await verifyJwt(request);
+    return verified?.payload.sub ?? null;
+  }
+
+  return getSessionUserId(request);
 }
 
 export async function hasCounterScope(request: Request, requiredScope: string) {
+  if (!bearerToken(request)) {
+    return (await getSessionUserId(request)) !== null;
+  }
+
   const verified = await verifyJwt(request);
 
   if (!verified) {

@@ -11,7 +11,7 @@ import {
 } from "#/components/ui/card.tsx";
 import { Skeleton } from "#/components/ui/skeleton.tsx";
 import { authBaseURL, authClient } from "#/lib/auth-client.ts";
-import { listCounters, type CounterDefinition } from "#/lib/counter-access.ts";
+import type { CounterDefinition } from "#/lib/counter-access.ts";
 import { useCounterMqtt } from "#/lib/use-counter-mqtt.ts";
 
 export const Route = createFileRoute("/")({
@@ -142,39 +142,32 @@ function CounterApp() {
     setCounterAccessState("loading");
     setCounterAccessError(null);
 
-    void listCounters(activeOrganization.id)
-      .then((definitions) =>
-        Promise.all(
-          definitions
-            .filter((counter) => counter.enabled)
-            .map(async (counter) => {
-              const response = await fetch(
-                `${authBaseURL.replace(/\/$/, "")}/api/auth/counter/access?organizationId=${encodeURIComponent(activeOrganization.id)}&counterId=${encodeURIComponent(counter.id)}`,
-                {
-                  credentials: "include",
-                  signal: controller.signal,
-                },
-              );
-              const result = (await response.json()) as {
-                allowed?: boolean;
-                error?: string;
-              };
+    void fetch("/api/counter/available", {
+      credentials: "include",
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        const result = (await response.json()) as {
+          counters?: Array<{
+            organizationId: string;
+            counterId: string;
+            counterName: string;
+          }>;
+          error?: string;
+        };
 
-              if (!response.ok) {
-                throw new Error(
-                  result.error ?? "Unable to verify Counter access.",
-                );
-              }
+        if (!response.ok) {
+          throw new Error(result.error ?? "Unable to load available Counters.");
+        }
 
-              return result.allowed ? counter : null;
-            }),
-        ),
-      )
-      .then((results) =>
-        results.filter(
-          (counter): counter is CounterDefinition => counter !== null,
-        ),
-      )
+        return (result.counters ?? [])
+          .filter((counter) => counter.organizationId === activeOrganization.id)
+          .map((counter) => ({
+            id: counter.counterId,
+            name: counter.counterName,
+            enabled: true,
+          }));
+      })
       .then((counters) => {
         if (controller.signal.aborted) return;
 

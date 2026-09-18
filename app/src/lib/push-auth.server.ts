@@ -242,9 +242,9 @@ async function getSessionUserId(request: Request) {
 
   const result = (await response.json()) as {
     user?: { id?: string };
-  };
+  } | null;
 
-  return typeof result.user?.id === "string" ? result.user.id : null;
+  return typeof result?.user?.id === "string" ? result.user.id : null;
 }
 
 export async function getAuthenticatedUserId(request: Request) {

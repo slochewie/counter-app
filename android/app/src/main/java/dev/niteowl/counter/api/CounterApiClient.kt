@@ -50,6 +50,16 @@ class CounterApiClient(private val oauth: OAuthClient) {
         return snapshot(selection, json.getInt("count"))
     }
 
+    suspend fun registerFcmToken(selection: CounterSelection, token: String) {
+        val config = OAuthConfig.forEnvironment(selection.environment)
+        val body = JSONObject()
+            .put("organizationId", selection.organizationId)
+            .put("counterId", selection.counterId)
+            .put("token", token)
+            .toString()
+        request(selection.environment, "${config.counterBaseUrl}/api/push/fcm", "POST", body)
+    }
+
     private fun snapshot(selection: CounterSelection, count: Int) = CounterSnapshot(
         organizationId = selection.organizationId,
         organizationName = selection.organizationName,

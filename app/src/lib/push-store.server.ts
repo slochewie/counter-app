@@ -160,17 +160,32 @@ export function listFcmRegistrationsForCounter(
   organizationId: string,
   counterId: string,
 ) {
-  return getDatabase()
+  const rows = getDatabase()
     .prepare(`
       SELECT
         token,
         user_id AS userId,
         organization_id AS organizationId,
-        counter_id AS counterId
+        counter_id AS counterId,
+        updated_at AS updatedAt
       FROM fcm_registration
       WHERE organization_id = ? AND counter_id = ?
+      ORDER BY datetime(updated_at) DESC
     `)
-    .all(organizationId, counterId) as StoredFcmRegistration[];
+    .all(organizationId, counterId) as Array<StoredFcmRegistration & { updatedAt: string }>;
+
+  const newestByUser = new Map<string, StoredFcmRegistration>();
+  for (const row of rows) {
+    if (!newestByUser.has(row.userId)) {
+      newestByUser.set(row.userId, {
+        token: row.token,
+        userId: row.userId,
+        organizationId: row.organizationId,
+        counterId: row.counterId,
+      });
+    }
+  }
+  return [...newestByUser.values()];
 }
 
 

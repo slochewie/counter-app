@@ -172,3 +172,11 @@ export function listFcmRegistrationsForCounter(
     `)
     .all(organizationId, counterId) as StoredFcmRegistration[];
 }
+
+
+export function listOrganizationIdsForCounter(counterId: string) {
+  const rows = getDatabase()
+    .prepare("SELECT DISTINCT organization_id AS organizationId FROM fcm_registration WHERE counter_id = ?")
+    .all(counterId) as Array<{ organizationId: string }>;
+  return rows.map((row) => row.organizationId);
+}

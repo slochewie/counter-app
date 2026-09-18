@@ -127,6 +127,61 @@ export async function listCounters(organizationId: string) {
   return Array.isArray(result.counters) ? result.counters : [];
 }
 
+export async function createCounter(
+  organizationId: string,
+  name: string,
+) {
+  const response = await fetch(authEndpoint("/api/auth/counter/create"), {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ organizationId, name }),
+  });
+
+  const result = (await response.json()) as {
+    counter?: CounterDefinition;
+    error?: string;
+  };
+
+  if (!response.ok || !result.counter) {
+    throw new Error(
+      typeof result.error === "string" ? result.error : "Unable to create Counter.",
+    );
+  }
+
+  return result.counter;
+}
+
+export async function updateCounter(
+  organizationId: string,
+  counterId: string,
+  changes: { name?: string; enabled?: boolean },
+) {
+  const response = await fetch(authEndpoint("/api/auth/counter/update"), {
+    method: "PATCH",
+    credentials: "include",
+    headers: {
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ organizationId, counterId, ...changes }),
+  });
+
+  const result = (await response.json()) as {
+    counter?: CounterDefinition;
+    error?: string;
+  };
+
+  if (!response.ok || !result.counter) {
+    throw new Error(
+      typeof result.error === "string" ? result.error : "Unable to update Counter.",
+    );
+  }
+
+  return result.counter;
+}
+
 export async function listCounterAssignments(organizationId: string) {
   const response = await fetch(
     authEndpointWithOrganization("/api/auth/counter/assignments", organizationId),

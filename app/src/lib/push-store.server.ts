@@ -116,8 +116,20 @@ export function listPushSubscriptionsForCounter(
 
 
 export function upsertFcmRegistration(registration: StoredFcmRegistration) {
-  getDatabase()
-    .prepare(`
+  const db = getDatabase();
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS fcm_registration (
+      token TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      organization_id TEXT NOT NULL,
+      counter_id TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS fcm_registration_counter_idx
+      ON fcm_registration (organization_id, counter_id);
+  `);
+  db.prepare(`
       INSERT INTO fcm_registration (
         token,
         user_id,

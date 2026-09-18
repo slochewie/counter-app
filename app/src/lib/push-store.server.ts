@@ -2,6 +2,13 @@ import { mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
+export type StoredFcmRegistration = {
+  token: string;
+  userId: string;
+  organizationId: string;
+  counterId: string;
+};
+
 export type StoredPushSubscription = {
   endpoint: string;
   userId: string;
@@ -105,4 +112,51 @@ export function listPushSubscriptionsForCounter(
       WHERE organization_id = ? AND counter_id = ?
     `)
     .all(organizationId, counterId) as StoredPushSubscription[];
+}
+
+
+export function upsertFcmRegistration(registration: StoredFcmRegistration) {
+  getDatabase()
+    .prepare(`
+      INSERT INTO fcm_registration (
+        token,
+        user_id,
+        organization_id,
+        counter_id
+      ) VALUES (?, ?, ?, ?)
+      ON CONFLICT(token) DO UPDATE SET
+        user_id = excluded.user_id,
+        organization_id = excluded.organization_id,
+        counter_id = excluded.counter_id,
+        updated_at = CURRENT_TIMESTAMP
+    `)
+    .run(
+      registration.token,
+      registration.userId,
+      registration.organizationId,
+      registration.counterId,
+    );
+}
+
+export function deleteFcmRegistration(token: string, userId: string) {
+  getDatabase()
+    .prepare(`DELETE FROM fcm_registration WHERE token = ? AND user_id = ?`)
+    .run(token, userId);
+}
+
+export function listFcmRegistrationsForCounter(
+  organizationId: string,
+  counterId: string,
+) {
+  return getDatabase()
+    .prepare(`
+      SELECT
+        token,
+        user_id AS userId,
+        organization_id AS organizationId,
+        counter_id AS counterId
+      FROM fcm_registration
+      WHERE organization_id = ? AND counter_id = ?
+    `)
+    .all(organizationId, counterId) as StoredFcmRegistration[];
 }

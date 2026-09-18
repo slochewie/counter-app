@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { SearchIcon, UsersIcon } from "lucide-react";
+import { PencilIcon, PlusIcon, SearchIcon, UsersIcon } from "lucide-react";
 
 import { Badge } from "#/components/ui/badge.tsx";
 import {
@@ -25,11 +25,13 @@ import {
   type CounterAssignment,
   type CounterManagementAccess,
   type EligibleOrganizationMember,
+  createCounter,
   getCounterManagementAccess,
   listCounterAssignments,
   listCounters,
   listCounterManagers,
   listEligibleOrganizationMembers,
+  updateCounter,
   updateCounterAssignment,
   updateCounterManager,
 } from "#/lib/counter-access.ts";
@@ -59,6 +61,8 @@ function CounterAssignments() {
   const [assignmentsError, setAssignmentsError] = useState<string | null>(null);
   const [updatingKey, setUpdatingKey] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [newCounterName, setNewCounterName] = useState("");
+  const [counterDefinitionUpdating, setCounterDefinitionUpdating] = useState(false);
   const isGlobalAdmin = session?.user.role === "admin";
 
   useEffect(() => {
@@ -264,6 +268,98 @@ function CounterAssignments() {
     );
   }, [members, search]);
 
+  async function handleCreateCounter() {
+    const name = newCounterName.trim();
+
+    if (
+      !activeOrganization?.id ||
+      !managementAccess?.canManageManagers ||
+      !name ||
+      counterDefinitionUpdating
+    ) {
+      return;
+    }
+
+    setCounterDefinitionUpdating(true);
+    setAssignmentsError(null);
+
+    try {
+      const counter = await createCounter(activeOrganization.id, name);
+      setCounters((current) =>
+        [...current, counter].sort((a, b) => a.name.localeCompare(b.name)),
+      );
+      setNewCounterName("");
+    } catch (error) {
+      setAssignmentsError(
+        error instanceof Error ? error.message : "Unable to create Counter.",
+      );
+    } finally {
+      setCounterDefinitionUpdating(false);
+    }
+  }
+
+  async function handleRenameCounter(counterId: string, currentName: string) {
+    if (
+      !activeOrganization?.id ||
+      !managementAccess?.canManageManagers ||
+      counterDefinitionUpdating
+    ) {
+      return;
+    }
+
+    const name = window.prompt("Counter name", currentName)?.trim();
+
+    if (!name || name === currentName) return;
+
+    setCounterDefinitionUpdating(true);
+    setAssignmentsError(null);
+
+    try {
+      const counter = await updateCounter(activeOrganization.id, counterId, {
+        name,
+      });
+      setCounters((current) =>
+        current
+          .map((item) => (item.id === counter.id ? counter : item))
+          .filter((item) => item.enabled)
+          .sort((a, b) => a.name.localeCompare(b.name)),
+      );
+    } catch (error) {
+      setAssignmentsError(
+        error instanceof Error ? error.message : "Unable to rename Counter.",
+      );
+    } finally {
+      setCounterDefinitionUpdating(false);
+    }
+  }
+
+  async function handleDisableCounter(counterId: string, name: string) {
+    if (
+      !activeOrganization?.id ||
+      !managementAccess?.canManageManagers ||
+      counterDefinitionUpdating ||
+      !window.confirm(
+        `Disable "${name}"? Existing assignments are preserved, but the Counter will no longer be available.`,
+      )
+    ) {
+      return;
+    }
+
+    setCounterDefinitionUpdating(true);
+    setAssignmentsError(null);
+
+    try {
+      await updateCounter(activeOrganization.id, counterId, { enabled: false });
+      setCounters((current) => current.filter((counter) => counter.id !== counterId));
+    } catch (error) {
+      setAssignmentsError(
+        error instanceof Error ? error.message : "Unable to disable Counter.",
+      );
+    } finally {
+      setCounterDefinitionUpdating(false);
+    }
+  }
+
   async function handleCounterToggle(
     member: EligibleOrganizationMember,
     counterId: string,
@@ -407,6 +503,90 @@ function CounterAssignments() {
           </p>
         </div>
       </div>
+
+      {managementAccess?.canManageManagers ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Counters</CardTitle>
+            <CardDescription>
+              Create and manage Counters for {activeOrganization?.name ?? "this organization"}.
+              Disabling a Counter preserves its assignments and history.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <div className="flex max-w-lg gap-2">
+              <Input
+                value={newCounterName}
+                onChange={(event) => setNewCounterName(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    void handleCreateCounter();
+                  }
+                }}
+                placeholder="New Counter name"
+                maxLength={100}
+                disabled={counterDefinitionUpdating}
+              />
+              <Button
+                type="button"
+                onClick={() => void handleCreateCounter()}
+                disabled={!newCounterName.trim() || counterDefinitionUpdating}
+              >
+                <PlusIcon />
+                Add
+              </Button>
+            </div>
+
+            {counters.length > 0 ? (
+              <div className="flex flex-col divide-y rounded-md border">
+                {counters.map((counter) => (
+                  <div
+                    key={counter.id}
+                    className="flex items-center justify-between gap-3 px-3 py-2.5"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{counter.name}</p>
+                      <p className="truncate font-mono text-xs text-muted-foreground">
+                        {counter.id}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={counterDefinitionUpdating}
+                        onClick={() =>
+                          void handleRenameCounter(counter.id, counter.name)
+                        }
+                      >
+                        <PencilIcon />
+                        Rename
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        disabled={counterDefinitionUpdating}
+                        onClick={() =>
+                          void handleDisableCounter(counter.id, counter.name)
+                        }
+                      >
+                        Disable
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No enabled Counters are configured for this organization.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card>
         <CardHeader>

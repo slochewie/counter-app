@@ -218,12 +218,18 @@ export async function sendCounterCommand(
 }
 
 
-let stateListener: MqttClient | null = null;
+type CounterPushGlobal = typeof globalThis & {
+  __niteowlCounterStateListener?: MqttClient;
+};
+
+function counterPushGlobal() {
+  return globalThis as CounterPushGlobal;
+}
 
 export function ensureCounterStatePushListener() {
-  if (stateListener) {
-    console.log("Counter FCM MQTT listener already initialized");
-    return stateListener;
+  const existing = counterPushGlobal().__niteowlCounterStateListener;
+  if (existing) {
+    return existing;
   }
 
   console.log("Counter FCM MQTT listener initializing");
@@ -236,7 +242,7 @@ export function ensureCounterStatePushListener() {
     clean: true,
     clientId: `counter_push_${Math.random().toString(16).slice(2)}`,
   });
-  stateListener = client;
+  counterPushGlobal().__niteowlCounterStateListener = client;
 
   client.on("connect", () => {
     console.log("Counter FCM MQTT connected");
@@ -268,6 +274,9 @@ export function ensureCounterStatePushListener() {
 
   client.on("close", () => {
     console.warn("Counter FCM MQTT listener connection closed");
+    if (counterPushGlobal().__niteowlCounterStateListener === client) {
+      delete counterPushGlobal().__niteowlCounterStateListener;
+    }
   });
 
   client.on("offline", () => {

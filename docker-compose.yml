@@ -26,8 +26,11 @@ services:
       - './app:/app'
       - '../niteowl-ui:/app/packages/niteowl-ui'
       - '../niteowl-app-config:/app/packages/niteowl-app-config'
+      - './firebase-admin.json:/run/secrets/firebase-admin.json:ro'
     env_file:
       - .env-counter-app
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/firebase-admin.json
     restart: unless-stopped
     networks: [niteowl-dev]
 

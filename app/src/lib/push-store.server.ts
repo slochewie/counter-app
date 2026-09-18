@@ -130,6 +130,19 @@ export function upsertFcmRegistration(registration: StoredFcmRegistration) {
       ON fcm_registration (organization_id, counter_id);
   `);
   db.prepare(`
+      DELETE FROM fcm_registration
+      WHERE user_id = ?
+        AND organization_id = ?
+        AND counter_id = ?
+        AND token <> ?
+    `).run(
+      registration.userId,
+      registration.organizationId,
+      registration.counterId,
+      registration.token,
+    );
+
+  db.prepare(`
       INSERT INTO fcm_registration (
         token,
         user_id,

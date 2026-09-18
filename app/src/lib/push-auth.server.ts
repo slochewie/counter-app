@@ -6,6 +6,7 @@ type AvailableCounter = {
   organizationId: string;
   organizationName: string;
   counterId: string;
+  counterName: string;
 };
 
 type AvailableCountersResponse = {

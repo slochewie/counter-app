@@ -226,6 +226,23 @@ function counterPushGlobal() {
   return globalThis as CounterPushGlobal;
 }
 
+const FCM_STATE_DEDUPE_MS = 1500;
+const recentFcmStates = new Map<string, { count: number; at: number }>();
+
+function shouldSendFcmState(counterId: string, count: number) {
+  const now = Date.now();
+  const previous = recentFcmStates.get(counterId);
+  if (
+    previous &&
+    previous.count === count &&
+    now - previous.at < FCM_STATE_DEDUPE_MS
+  ) {
+    return false;
+  }
+  recentFcmStates.set(counterId, { count, at: now });
+  return true;
+}
+
 export function ensureCounterStatePushListener() {
   const existing = counterPushGlobal().__niteowlCounterStateListener;
   if (existing) {
@@ -263,6 +280,10 @@ export function ensureCounterStatePushListener() {
     if (!state) return;
 
     const counterId = match[1];
+    if (!shouldSendFcmState(counterId, state.count)) {
+      return;
+    }
+
     console.log("Counter FCM MQTT state received", {
       topic,
       count: state.count,

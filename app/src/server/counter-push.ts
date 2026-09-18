@@ -18,7 +18,7 @@ const lastCounts = new Map<string, number>();
 const client = mqtt.connect(host, {
   username,
   password,
-  reconnectPeriod: 5000,
+  reconnectPeriod: 0,
   clean: true,
   clientId: "counter_push_fcm_bridge",
 });
@@ -77,4 +77,11 @@ client.on("message", (topic, message) => {
 
 client.on("error", (error) => {
   console.error("Counter FCM bridge MQTT error", error);
+  process.exitCode = 1;
+  client.end(true, () => process.exit(1));
+});
+
+client.on("close", () => {
+  console.error("Counter FCM bridge MQTT connection closed; exiting for Docker restart");
+  process.exit(1);
 });

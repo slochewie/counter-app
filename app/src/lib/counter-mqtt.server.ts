@@ -226,20 +226,13 @@ function counterPushGlobal() {
   return globalThis as CounterPushGlobal;
 }
 
-const FCM_STATE_DEDUPE_MS = 1500;
-const recentFcmStates = new Map<string, { count: number; at: number }>();
+const recentFcmStates = new Map<string, number>();
 
 function shouldSendFcmState(counterId: string, count: number) {
-  const now = Date.now();
-  const previous = recentFcmStates.get(counterId);
-  if (
-    previous &&
-    previous.count === count &&
-    now - previous.at < FCM_STATE_DEDUPE_MS
-  ) {
+  if (recentFcmStates.get(counterId) === count) {
     return false;
   }
-  recentFcmStates.set(counterId, { count, at: now });
+  recentFcmStates.set(counterId, count);
   return true;
 }
 

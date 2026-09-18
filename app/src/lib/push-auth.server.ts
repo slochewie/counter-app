@@ -234,8 +234,14 @@ async function getSessionUserId(request: Request) {
 
   if (!cookie) return null;
 
-  const response = await fetch(`${getAuthBaseUrl(request)}/api/auth/get-session`, {
-    headers: { cookie },
+  const authBaseUrl = getAuthBaseUrl(request);
+  const response = await fetch(`${authBaseUrl}/api/auth/get-session`, {
+    headers: {
+      cookie,
+      host: new URL(authBaseUrl).host,
+      "x-forwarded-host": new URL(authBaseUrl).host,
+      "x-forwarded-proto": "https",
+    },
   });
 
   if (!response.ok) return null;

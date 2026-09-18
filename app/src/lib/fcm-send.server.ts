@@ -33,7 +33,7 @@ export async function sendFcmStateToCounter(
   const results = await Promise.allSettled(
     registrations.map(async (registration) => {
       try {
-        await messaging().send({
+        const messageId = await messaging().send({
           token: registration.token,
           data: {
             organizationId,
@@ -43,6 +43,14 @@ export async function sendFcmStateToCounter(
           android: {
             priority: "high",
           },
+        });
+        console.log("Counter FCM Firebase send", {
+          organizationId,
+          counterId,
+          count,
+          userId: registration.userId,
+          tokenSuffix: registration.token.slice(-12),
+          messageId,
         });
       } catch (error: unknown) {
         const code =

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "168691703808",
+    "project_id": "niteowl-capacity-counter",
+    "storage_bucket": "niteowl-capacity-counter.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:168691703808:android:915617ecccc07080dbb8e5",
+        "android_client_info": {
+          "package_name": "dev.niteowl.counter"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAB0eBvT_wQ0tQkmwlmPRt7RdyI8nNvtTM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

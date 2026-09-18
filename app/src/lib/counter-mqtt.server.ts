@@ -250,7 +250,7 @@ export function ensureCounterStatePushListener() {
     password,
     reconnectPeriod: 5000,
     clean: true,
-    clientId: `counter_push_${Math.random().toString(16).slice(2)}`,
+    clientId: "counter_push_fcm_bridge",
   });
   counterPushGlobal().__niteowlCounterStateListener = client;
 

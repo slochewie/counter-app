@@ -115,19 +115,45 @@ struct CounterRootView: View {
         List {
             if model.organizations.count > 1 {
                 Section {
-                    Picker("Organization", selection: organizationBinding) {
-                        Text("Select an organization")
-                            .tag(Optional<String>.none)
+                    HStack {
+                        Text("Organization")
 
-                        ForEach(model.organizations, id: \.organizationID) { organization in
-                            Text(organization.organizationName)
-                                .lineLimit(1)
-                                .truncationMode(.tail)
-                                .tag(Optional(organization.organizationID))
+                        Spacer(minLength: 12)
+
+                        Menu {
+                            ForEach(model.organizations, id: \.organizationID) { organization in
+                                Button {
+                                    do {
+                                        try model.selectOrganization(organization.organizationID)
+                                        if model.selected != nil {
+                                            Task {
+                                                await model.refresh()
+                                            }
+                                        }
+                                    } catch {
+                                        model.errorMessage = error.localizedDescription
+                                    }
+                                } label: {
+                                    if organization.organizationID == model.selectedOrganizationID {
+                                        Label(organization.organizationName, systemImage: "checkmark")
+                                    } else {
+                                        Text(organization.organizationName)
+                                    }
+                                }
+                            }
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text(selectedOrganizationName)
+                                    .lineLimit(1)
+                                    .truncationMode(.tail)
+
+                                Image(systemName: "chevron.up.chevron.down")
+                                    .font(.caption)
+                            }
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: 210, alignment: .trailing)
                         }
                     }
-                    .lineLimit(1)
-                    .truncationMode(.tail)
                 }
             }
 
@@ -256,6 +282,16 @@ struct CounterRootView: View {
                 await model.refreshSilently()
             }
         }
+    }
+
+    private var selectedOrganizationName: String {
+        guard let organizationID = model.selectedOrganizationID else {
+            return "Select an organization"
+        }
+
+        return model.organizations.first(where: {
+            $0.organizationID == organizationID
+        })?.organizationName ?? "Select an organization"
     }
 
     private var organizationBinding: Binding<String?> {

@@ -4,7 +4,13 @@ struct CounterSelection: Codable, Sendable, Equatable, Hashable {
     let organizationID: String
     let organizationName: String
     let counterID: String
+    let counterName: String?
     let environment: CounterEnvironment
+
+    var counterDisplayName: String {
+        let trimmed = counterName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return trimmed.isEmpty ? counterID : trimmed
+    }
 }
 
 enum CounterEnvironment: String, Codable, Sendable, CaseIterable, Hashable {

@@ -113,15 +113,33 @@ struct CounterRootView: View {
 
     private var signedInView: some View {
         List {
-            if model.selections.count > 1 {
+            if model.organizations.count > 1 {
                 Section {
-                    Picker("Counter", selection: selectedBinding) {
-                        Text("Select a counter")
-                            .tag(Optional<CounterSelection>.none)
+                    Picker("Organization", selection: organizationBinding) {
+                        Text("Select an organization")
+                            .tag(Optional<String>.none)
 
-                        ForEach(model.selections, id: \.counterID) { selection in
-                            Text(selection.organizationName)
-                                .tag(Optional(selection))
+                        ForEach(model.organizations, id: \.organizationID) { organization in
+                            Text(organization.organizationName)
+                                .tag(Optional(organization.organizationID))
+                        }
+                    }
+                }
+            }
+
+            if let organizationID = model.selectedOrganizationID {
+                let counters = model.counters(for: organizationID)
+
+                if counters.count > 1 {
+                    Section {
+                        Picker("Counter", selection: selectedBinding) {
+                            Text("Select a counter")
+                                .tag(Optional<CounterSelection>.none)
+
+                            ForEach(counters, id: \.counterID) { counter in
+                                Text(counter.counterDisplayName)
+                                    .tag(Optional(counter))
+                            }
                         }
                     }
                 }
@@ -234,6 +252,28 @@ struct CounterRootView: View {
                 await model.refreshSilently()
             }
         }
+    }
+
+    private var organizationBinding: Binding<String?> {
+        Binding(
+            get: { model.selectedOrganizationID },
+            set: { organizationID in
+                guard let organizationID else {
+                    return
+                }
+
+                do {
+                    try model.selectOrganization(organizationID)
+                    if model.selected != nil {
+                        Task {
+                            await model.refresh()
+                        }
+                    }
+                } catch {
+                    model.errorMessage = error.localizedDescription
+                }
+            }
+        )
     }
 
     private var selectedBinding: Binding<CounterSelection?> {

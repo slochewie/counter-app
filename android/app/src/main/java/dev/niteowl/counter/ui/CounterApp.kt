@@ -160,7 +160,6 @@ fun CounterApp(viewModel: CounterViewModel) {
                         if (selection == null) {
                             EmptyState(if (state.selections.isEmpty()) "No Counters" else "Select a Counter")
                         } else {
-                            Text(selection.organizationName, style = MaterialTheme.typography.titleMedium)
                             Text(
                                 state.snapshot?.count?.toString() ?: "—",
                                 modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),

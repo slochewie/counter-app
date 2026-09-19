@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { useLocation } from "@tanstack/react-router"
 import { OrganizationSelector } from "@niteowl/ui"
 
 import { authClient } from "#/lib/auth-client.ts"
@@ -38,6 +39,7 @@ async function loadAvailableCounters(signal: AbortSignal) {
 }
 
 export function OrganizationHeaderSelector() {
+  const location = useLocation()
   const { data: session } = authClient.useSession()
   const { data: organizations, isPending: areOrganizationsPending } =
     authClient.useListOrganizations()
@@ -46,7 +48,7 @@ export function OrganizationHeaderSelector() {
   const [availableCounters, setAvailableCounters] = useState<AvailableCounter[]>([])
 
   useEffect(() => {
-    if (!session) {
+    if (!session || location.pathname === "/") {
       setAvailableCounters([])
       return
     }
@@ -66,7 +68,7 @@ export function OrganizationHeaderSelector() {
       })
 
     return () => controller.abort()
-  }, [session])
+  }, [location.pathname, session])
 
   useEffect(() => {
     if (
@@ -102,9 +104,13 @@ export function OrganizationHeaderSelector() {
       loading={areOrganizationsPending || isActiveOrganizationPending}
       className="w-28 min-w-0 sm:w-48 lg:w-56"
       onValueChange={(organizationId) => {
-        void (async () => {
-          void authClient.organization.setActive({ organizationId })
+        void authClient.organization.setActive({ organizationId })
 
+        if (location.pathname === "/") {
+          return
+        }
+
+        void (async () => {
           let counters = availableCounters
           if (counters.length === 0) {
             counters = await loadAvailableCounters(new AbortController().signal)

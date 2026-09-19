@@ -1,0 +1,505 @@
+import { useEffect, useRef, useState } from "react";
+import { ChevronDown, GaugeIcon } from "lucide-react";
+
+import { PushNotifications } from "#/components/push-notifications.tsx";
+import { Button } from "#/components/ui/button.tsx";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "#/components/ui/card.tsx";
+import { Skeleton } from "#/components/ui/skeleton.tsx";
+import { authBaseURL, authClient } from "#/lib/auth-client.ts";
+import {
+  type AvailableCounter,
+  canonicalCounterPath,
+  counterKey,
+  findCounterBySlugs,
+} from "#/lib/counter-routes.ts";
+import { useCounterMqtt } from "#/lib/use-counter-mqtt.ts";
+
+const RESET_HOLD_MS = 800;
+
+type CounterAccessState = "idle" | "loading" | "allowed" | "denied" | "error";
+
+type AvailableCountersResponse = {
+  counters?: AvailableCounter[];
+  error?: string;
+};
+
+type CounterScreenProps = {
+  organizationSlug?: string;
+  counterSlug?: string;
+};
+
+async function counterAuthorizationHeader() {
+  const { data, error } = await authClient.token();
+
+  if (error || !data?.token) {
+    throw new Error(error?.message ?? "Unable to authenticate this Counter request.");
+  }
+
+  return `Bearer ${data.token}`;
+}
+
+async function loadAvailableCounters(signal: AbortSignal) {
+  const authorization = await counterAuthorizationHeader();
+  const response = await fetch("/api/counter/available", {
+    headers: {
+      authorization,
+    },
+    signal,
+  });
+  const result = (await response.json()) as AvailableCountersResponse;
+
+  if (!response.ok) {
+    throw new Error(result.error ?? "Unable to load available Counters.");
+  }
+
+  return Array.isArray(result.counters) ? result.counters : [];
+}
+
+export function CounterSessionSkeleton() {
+  return (
+    <main className="min-h-full bg-zinc-950 text-zinc-50">
+      <div className="mx-auto w-full max-w-xl p-3 sm:p-4 md:p-6">
+        <div className="mb-5 flex items-center gap-3">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-full border border-zinc-800 bg-zinc-900 text-zinc-400 shadow-sm">
+            <GaugeIcon className="size-5" />
+          </div>
+          <h1 className="text-2xl font-semibold tracking-tight">Capacity Counter</h1>
+        </div>
+        <Card className="overflow-hidden border-zinc-800 bg-zinc-900 text-zinc-50 shadow-2xl shadow-black/20">
+          <CardHeader className="border-b border-zinc-800 px-4 py-2.5 sm:px-6 sm:py-4">
+            <div className="flex items-center justify-end gap-4">
+              <Skeleton className="h-4 w-20 bg-zinc-800" />
+            </div>
+          </CardHeader>
+
+          <CardContent className="space-y-3 p-4 sm:space-y-5 sm:p-6">
+            <Skeleton className="h-36 w-full rounded-2xl bg-zinc-800 sm:h-52" />
+
+            <div className="grid grid-cols-2 gap-3 pb-1">
+              <Skeleton className="h-20 w-full rounded-2xl bg-zinc-800 sm:h-28" />
+              <Skeleton className="h-20 w-full rounded-2xl bg-zinc-800 sm:h-28" />
+            </div>
+
+            <Skeleton className="h-12 w-full rounded-xl bg-zinc-800 sm:h-14" />
+
+            <div className="border-t border-zinc-800 pt-2">
+              <Skeleton className="h-10 w-full bg-zinc-800" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </main>
+  );
+}
+
+function CounterPageShell({ children }: { children: React.ReactNode }) {
+  return (
+    <main className="min-h-full bg-zinc-950 text-zinc-50">
+      <div className="mx-auto w-full max-w-xl p-3 sm:p-4 md:p-6">
+        <div className="mb-5 flex items-center gap-3">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-full border border-zinc-800 bg-zinc-900 text-zinc-400 shadow-sm">
+            <GaugeIcon className="size-5" />
+          </div>
+          <h1 className="text-2xl font-semibold tracking-tight">Capacity Counter</h1>
+        </div>
+        {children}
+      </div>
+    </main>
+  );
+}
+
+function CounterSelector({
+  counters,
+  selectedCounter,
+  selectedCounterKey,
+  onSelectedCounterKeyChange,
+}: {
+  counters: AvailableCounter[];
+  selectedCounter: AvailableCounter | null;
+  selectedCounterKey: string | null;
+  onSelectedCounterKeyChange: (value: string) => void;
+}) {
+  return (
+    <CounterPageShell>
+      <Card className="overflow-hidden border-zinc-800 bg-zinc-900 text-zinc-50 shadow-2xl shadow-black/20">
+        <CardHeader className="border-b border-zinc-800 px-4 py-4 sm:px-6">
+          <CardTitle>Open a Counter</CardTitle>
+          <CardDescription className="text-zinc-400">
+            Choose a location and counter once, then bookmark or add the resulting URL to the Home Screen.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4 p-4 sm:p-6">
+          <label className="block space-y-2">
+            <span className="text-sm font-medium text-zinc-300">Location / Counter</span>
+            <select
+              value={selectedCounterKey ?? ""}
+              onChange={(event) => onSelectedCounterKeyChange(event.target.value)}
+              className="w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100"
+              aria-label="Location and Counter"
+            >
+              {counters.map((counter) => (
+                <option key={counterKey(counter)} value={counterKey(counter)}>
+                  {counter.organizationName} · {counter.counterName}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          {selectedCounter ? (
+            <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-3 text-xs text-zinc-400">
+              Canonical URL:{" ""}
+              <span className="font-mono text-zinc-300">
+                {canonicalCounterPath(selectedCounter)}
+              </span>
+            </div>
+          ) : null}
+
+          <Button
+            type="button"
+            className="h-12 w-full touch-manipulation rounded-xl text-base font-semibold"
+            disabled={!selectedCounter}
+            onClick={() => {
+              if (selectedCounter) {
+                window.location.assign(canonicalCounterPath(selectedCounter));
+              }
+            }}
+          >
+            Open Counter
+          </Button>
+        </CardContent>
+      </Card>
+    </CounterPageShell>
+  );
+}
+
+export function CounterScreen({ organizationSlug, counterSlug }: CounterScreenProps) {
+  const targetedRoute = Boolean(organizationSlug && counterSlug);
+  const { data: session, isPending } = authClient.useSession();
+  const { data: organizations } = authClient.useListOrganizations();
+  const { data: activeOrganization } = authClient.useActiveOrganization();
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [isResetHolding, setIsResetHolding] = useState(false);
+  const [counterAccessState, setCounterAccessState] =
+    useState<CounterAccessState>("idle");
+  const [availableCounters, setAvailableCounters] = useState<AvailableCounter[]>([]);
+  const [selectedCounterKey, setSelectedCounterKey] = useState<string | null>(null);
+  const [counterAccessError, setCounterAccessError] = useState<string | null>(
+    null,
+  );
+  const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const selectedCounter =
+    availableCounters.find((counter) => counterKey(counter) === selectedCounterKey) ??
+    null;
+  const locationId = selectedCounter?.counterId ?? null;
+  const actor = session
+    ? {
+        id: session.user.id,
+        name: session.user.name || session.user.email,
+      }
+    : null;
+  const mqttLocationId =
+    targetedRoute && counterAccessState === "allowed" ? locationId : null;
+  const { count, status, updatedAt, updatedBy, sendCommand } =
+    useCounterMqtt(mqttLocationId, actor);
+
+  useEffect(() => {
+    if (isPending || session) {
+      return;
+    }
+
+    const redirectTo = encodeURIComponent(window.location.href);
+    const signInURL = `${authBaseURL.replace(/\/$/, "")}/auth/sign-in?redirectTo=${redirectTo}`;
+
+    window.location.replace(signInURL);
+  }, [isPending, session]);
+
+  useEffect(() => {
+    if (!session) {
+      setAvailableCounters([]);
+      setSelectedCounterKey(null);
+      setCounterAccessState("idle");
+      setCounterAccessError(null);
+      return;
+    }
+
+    const controller = new AbortController();
+
+    setCounterAccessState("loading");
+    setCounterAccessError(null);
+
+    void loadAvailableCounters(controller.signal)
+      .then((counters) => {
+        if (controller.signal.aborted) return;
+
+        setAvailableCounters(counters);
+
+        if (targetedRoute && organizationSlug && counterSlug) {
+          const matchedCounter = findCounterBySlugs(
+            counters,
+            organizationSlug,
+            counterSlug,
+          );
+
+          if (!matchedCounter) {
+            setSelectedCounterKey(null);
+            setCounterAccessState("denied");
+            return;
+          }
+
+          const canonicalPath = canonicalCounterPath(matchedCounter);
+
+          if (window.location.pathname !== canonicalPath) {
+            window.history.replaceState(null, "", canonicalPath);
+          }
+
+          setSelectedCounterKey(counterKey(matchedCounter));
+          setCounterAccessState("allowed");
+          return;
+        }
+
+        setSelectedCounterKey((current) =>
+          current && counters.some((counter) => counterKey(counter) === current)
+            ? current
+            : counterKey(counters[0] ?? null),
+        );
+        setCounterAccessState(counters.length > 0 ? "allowed" : "denied");
+
+        if (counters.length === 1) {
+          window.location.replace(canonicalCounterPath(counters[0]));
+        }
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+
+        setAvailableCounters([]);
+        setSelectedCounterKey(null);
+        setCounterAccessState("error");
+        setCounterAccessError(
+          error instanceof Error
+            ? error.message
+            : "Unable to load available Counters.",
+        );
+      });
+
+    return () => controller.abort();
+  }, [counterSlug, organizationSlug, session, targetedRoute]);
+
+  useEffect(() => {
+    if (
+      !selectedCounter ||
+      activeOrganization?.id === selectedCounter.organizationId ||
+      !organizations?.some((organization) => organization.id === selectedCounter.organizationId)
+    ) {
+      return;
+    }
+
+    void authClient.organization.setActive({
+      organizationId: selectedCounter.organizationId,
+    });
+  }, [activeOrganization?.id, organizations, selectedCounter]);
+
+  useEffect(() => {
+    return () => {
+      if (resetTimerRef.current) {
+        clearTimeout(resetTimerRef.current);
+      }
+    };
+  }, []);
+
+  function cancelResetHold() {
+    if (resetTimerRef.current) {
+      clearTimeout(resetTimerRef.current);
+      resetTimerRef.current = null;
+    }
+
+    setIsResetHolding(false);
+  }
+
+  function startResetHold() {
+    if (!isConnected || resetTimerRef.current) {
+      return;
+    }
+
+    setIsResetHolding(true);
+    resetTimerRef.current = setTimeout(() => {
+      resetTimerRef.current = null;
+      setIsResetHolding(false);
+      sendCommand("reset");
+    }, RESET_HOLD_MS);
+  }
+
+  if (isPending) {
+    return <CounterSessionSkeleton />;
+  }
+
+  if (!session) {
+    return null;
+  }
+
+  if (!targetedRoute && counterAccessState === "allowed") {
+    return (
+      <CounterSelector
+        counters={availableCounters}
+        selectedCounter={selectedCounter}
+        selectedCounterKey={selectedCounterKey}
+        onSelectedCounterKeyChange={setSelectedCounterKey}
+      />
+    );
+  }
+
+  const isConnected = status === "connected";
+  const stateTopic = locationId
+    ? `counters/${locationId}/capacity/state`
+    : "—";
+
+  return (
+    <CounterPageShell>
+      <Card className="overflow-hidden border-zinc-800 bg-zinc-900 text-zinc-50 shadow-2xl shadow-black/20">
+        <CardHeader className="border-b border-zinc-800 px-4 py-2.5 sm:px-6 sm:py-4">
+          <div className="flex items-center justify-between gap-4">
+            <span className="min-w-0 truncate text-sm font-medium text-zinc-300">
+              {selectedCounter
+                ? `${selectedCounter.organizationName} · ${selectedCounter.counterName}`
+                : ""}
+            </span>
+            <div className="flex shrink-0 items-center gap-2 text-xs font-medium text-zinc-400">
+              <span
+                className={`h-2.5 w-2.5 rounded-full ${
+                  isConnected ? "bg-emerald-500" : "bg-zinc-600"
+                }`}
+              />
+              <span className="capitalize">{status}</span>
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent className="space-y-3 p-4 sm:space-y-5 sm:p-6">
+          {counterAccessState === "idle" || counterAccessState === "loading" ? (
+            <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-4 text-sm text-zinc-400">
+              Checking Counter access…
+            </div>
+          ) : counterAccessState === "denied" ? (
+            <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-4 text-sm text-zinc-300">
+              {targetedRoute
+                ? "This Counter link was not found or you do not have access to it."
+                : "You don&apos;t have access to any Counters."}
+            </div>
+          ) : counterAccessState === "error" ? (
+            <div className="rounded-xl border border-red-900/60 bg-red-950/30 p-4 text-sm text-red-200">
+              {counterAccessError ?? "Unable to verify Counter access."}
+            </div>
+          ) : (
+            <>
+              <div className="flex h-36 items-center justify-center rounded-2xl border border-zinc-800 bg-black px-4 sm:h-52">
+                <div className="text-center text-7xl font-black leading-none tracking-tight tabular-nums sm:text-9xl">
+                  {count ?? "—"}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 pb-1">
+                <Button
+                  className="h-20 touch-manipulation rounded-2xl border border-[#d8b63c] border-t-[#ffe77e] bg-[#f5ce45] text-4xl font-bold text-zinc-950 shadow-[0_5px_0_#b28f22,0_8px_14px_rgba(0,0,0,0.28)] transition-[transform,box-shadow,background-color] hover:bg-[#f8d65c] active:translate-y-[3px] active:shadow-[0_2px_0_#b28f22,0_4px_8px_rgba(0,0,0,0.24)] disabled:bg-zinc-900 disabled:text-zinc-600 disabled:shadow-none sm:h-28 sm:text-5xl"
+                  disabled={!isConnected}
+                  onClick={() => sendCommand("decrement")}
+                >
+                  −1
+                </Button>
+                <Button
+                  className="h-20 touch-manipulation rounded-2xl border border-[#4667a4] border-t-[#7f9bd5] bg-[#5075bb] text-4xl font-bold text-white shadow-[0_5px_0_#344f87,0_8px_14px_rgba(0,0,0,0.28)] transition-[transform,box-shadow,background-color] hover:bg-[#6085cb] active:translate-y-[3px] active:shadow-[0_2px_0_#344f87,0_4px_8px_rgba(0,0,0,0.24)] disabled:bg-zinc-800 disabled:text-zinc-600 disabled:shadow-none sm:h-28 sm:text-5xl"
+                  disabled={!isConnected}
+                  onClick={() => sendCommand("increment")}
+                >
+                  +1
+                </Button>
+              </div>
+
+              <Button
+                className={`h-12 w-full touch-manipulation select-none rounded-xl border-t border-t-white/20 text-base font-semibold shadow-[0_4px_0_color-mix(in_oklab,var(--destructive),black_32%),0_7px_12px_rgba(0,0,0,0.24)] transition-[transform,box-shadow,filter] active:translate-y-[2px] active:shadow-[0_2px_0_color-mix(in_oklab,var(--destructive),black_32%),0_3px_7px_rgba(0,0,0,0.2)] disabled:shadow-none sm:h-14 ${
+                  isResetHolding
+                    ? "translate-y-[2px] brightness-75 shadow-[0_2px_0_color-mix(in_oklab,var(--destructive),black_32%),0_3px_7px_rgba(0,0,0,0.2)]"
+                    : ""
+                }`}
+                variant="destructive"
+                disabled={!isConnected}
+                onContextMenu={(event) => event.preventDefault()}
+                onPointerDown={startResetHold}
+                onPointerUp={cancelResetHold}
+                onPointerCancel={cancelResetHold}
+                onPointerLeave={cancelResetHold}
+                onKeyDown={(event) => {
+                  if ((event.key === " " || event.key === "Enter") && !event.repeat) {
+                    event.preventDefault();
+                    startResetHold();
+                  }
+                }}
+                onKeyUp={(event) => {
+                  if (event.key === " " || event.key === "Enter") {
+                    event.preventDefault();
+                    cancelResetHold();
+                  }
+                }}
+                aria-label="Hold to reset counter"
+              >
+                {isResetHolding ? "Keep Holding…" : "Hold Reset"}
+              </Button>
+
+              <div className="border-t border-zinc-800 pt-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="h-10 w-full touch-manipulation justify-between px-2 text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+                  aria-expanded={detailsOpen}
+                  onClick={() => setDetailsOpen((open) => !open)}
+                >
+                  Details
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform ${detailsOpen ? "rotate-180" : ""}`}
+                  />
+                </Button>
+
+                {detailsOpen ? (
+                  <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 px-2 pb-1 pt-2 text-xs sm:text-sm">
+                    <dt className="text-zinc-500">Topic</dt>
+                    <dd className="break-all text-right font-mono text-[11px] text-zinc-400 sm:text-xs">
+                      {stateTopic}
+                    </dd>
+
+                    <dt className="text-zinc-500">Last update</dt>
+                    <dd className="text-right text-zinc-300">
+                      {updatedAt ? updatedAt.toLocaleString() : "—"}
+                    </dd>
+
+                    <dt className="text-zinc-500">Source</dt>
+                    <dd className="text-right text-zinc-300">
+                      {updatedBy ?? "—"}
+                    </dd>
+
+                    {selectedCounter && locationId ? (
+                      <>
+                        <dt className="pt-1 text-zinc-500">Notifications</dt>
+                        <dd className="pt-1">
+                          <PushNotifications
+                            organizationId={selectedCounter.organizationId}
+                            organizationName={selectedCounter.organizationName}
+                            counterId={locationId}
+                            count={count}
+                          />
+                        </dd>
+                      </>
+                    ) : null}
+                  </dl>
+                ) : null}
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+    </CounterPageShell>
+  );
+}

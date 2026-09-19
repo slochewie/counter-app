@@ -31,6 +31,12 @@ final class CounterAppModel: ObservableObject {
             selections = try await CounterRuntime
                 .apiClient(for: selection.environment)
                 .availableCounters(in: selection.environment)
+
+            if let refreshedSelection = selections.first(where: {
+                $0.organizationID == selection.organizationID && $0.counterID == selection.counterID
+            }) {
+                try select(refreshedSelection)
+            }
             await refresh()
         } catch {
             signedIn = false
@@ -87,8 +93,12 @@ final class CounterAppModel: ObservableObject {
                 .availableCounters(in: environment)
             selections = available
 
+            let organizationIDs = Set(available.map(\.organizationID))
+            if organizationIDs.count == 1, let organizationID = organizationIDs.first {
+                try selectOrganization(organizationID)
+            }
+
             if available.count == 1 {
-                try select(available[0])
                 await refresh()
             }
         } catch {

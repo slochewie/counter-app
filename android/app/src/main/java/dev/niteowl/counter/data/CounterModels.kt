@@ -9,8 +9,12 @@ data class CounterSelection(
     val organizationId: String,
     val organizationName: String,
     val counterId: String,
+    val counterName: String?,
     val environment: CounterEnvironment,
-)
+) {
+    val counterDisplayName: String
+        get() = counterName?.trim()?.takeIf { it.isNotEmpty() } ?: counterId
+}
 
 data class CounterSnapshot(
     val organizationId: String,

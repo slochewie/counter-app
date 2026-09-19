@@ -7,6 +7,7 @@ final class CounterAppModel: ObservableObject {
     @Published private(set) var signedIn = false
     @Published private(set) var selections: [CounterSelection] = []
     @Published var selected: CounterSelection?
+    @Published var selectedOrganizationID: String?
     @Published private(set) var snapshot: CounterSnapshot?
     @Published private(set) var busy = false
     @Published var errorMessage: String?
@@ -16,6 +17,7 @@ final class CounterAppModel: ObservableObject {
 
     func restore() async {
         selected = sharedStore?.selection()
+        selectedOrganizationID = selected?.organizationID
         snapshot = sharedStore?.snapshot()
 
         guard let selection = selected else {
@@ -94,7 +96,35 @@ final class CounterAppModel: ObservableObject {
         }
     }
 
+    var organizations: [CounterSelection] {
+        var seen = Set<String>()
+        return selections.filter { seen.insert($0.organizationID).inserted }
+    }
+
+    func counters(for organizationID: String) -> [CounterSelection] {
+        selections.filter { $0.organizationID == organizationID }
+    }
+
+    func selectOrganization(_ organizationID: String) throws {
+        selectedOrganizationID = organizationID
+        let counters = counters(for: organizationID)
+
+        if counters.count == 1, let counter = counters.first {
+            try select(counter)
+            return
+        }
+
+        if let selected, selected.organizationID == organizationID {
+            return
+        }
+
+        selected = nil
+        selectedOrganizationID = nil
+        snapshot = nil
+    }
+
     func select(_ selection: CounterSelection) throws {
+        selectedOrganizationID = selection.organizationID
         selected = selection
         try sharedStore?.saveSelection(selection)
         WidgetCenter.shared.reloadAllTimelines()

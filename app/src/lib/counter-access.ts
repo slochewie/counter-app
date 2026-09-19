@@ -182,6 +182,32 @@ export async function updateCounter(
   return result.counter;
 }
 
+export async function deleteCounter(
+  organizationId: string,
+  counterId: string,
+) {
+  const response = await fetch(authEndpoint("/api/auth/counter/delete"), {
+    method: "DELETE",
+    credentials: "include",
+    headers: {
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ organizationId, counterId }),
+  });
+
+  const result = (await response.json()) as {
+    deleted?: boolean;
+    error?: string;
+  };
+
+  if (!response.ok || result.deleted !== true) {
+    throw new Error(
+      typeof result.error === "string" ? result.error : "Unable to delete Counter.",
+    );
+  }
+}
+
+
 export async function listCounterAssignments(organizationId: string) {
   const response = await fetch(
     authEndpointWithOrganization("/api/auth/counter/assignments", organizationId),

@@ -18,6 +18,7 @@ struct CounterWidgetProvider: AppIntentTimelineProvider {
             organizationID: "preview",
             organizationName: "NiteOwl",
             counterID: "preview",
+            counterName: "Capacity Counter",
             environment: .niteOwl
         )
         return CounterWidgetEntry(

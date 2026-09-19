@@ -24,6 +24,7 @@ actor CounterAPIClient {
                 organizationID: $0.organizationId,
                 organizationName: $0.organizationName,
                 counterID: $0.counterId,
+                counterName: $0.counterName,
                 environment: environment
             )
         }
@@ -143,6 +144,7 @@ private struct AvailableCounterResponse: Decodable {
     let organizationId: String
     let organizationName: String
     let counterId: String
+    let counterName: String?
 }
 
 private struct CounterAPIErrorResponse: Decodable {

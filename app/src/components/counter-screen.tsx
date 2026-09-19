@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ChevronDown, GaugeIcon } from "lucide-react";
 
 import { PushNotifications } from "#/components/push-notifications.tsx";
@@ -98,7 +98,7 @@ export function CounterSessionSkeleton() {
   );
 }
 
-function CounterPageShell({ children }: { children: React.ReactNode }) {
+function CounterPageShell({ children }: { children: ReactNode }) {
   return (
     <main className="min-h-full bg-zinc-950 text-zinc-50">
       <div className="mx-auto w-full max-w-xl p-3 sm:p-4 md:p-6">
@@ -153,7 +153,7 @@ function CounterSelector({
 
           {selectedCounter ? (
             <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-3 text-xs text-zinc-400">
-              Canonical URL:{" ""}
+              Canonical URL:{" "}
               <span className="font-mono text-zinc-300">
                 {canonicalCounterPath(selectedCounter)}
               </span>
@@ -266,7 +266,9 @@ export function CounterScreen({ organizationSlug, counterSlug }: CounterScreenPr
         setSelectedCounterKey((current) =>
           current && counters.some((counter) => counterKey(counter) === current)
             ? current
-            : counterKey(counters[0] ?? null),
+            : counters[0]
+              ? counterKey(counters[0])
+              : null,
         );
         setCounterAccessState(counters.length > 0 ? "allowed" : "denied");
 
@@ -388,7 +390,7 @@ export function CounterScreen({ organizationSlug, counterSlug }: CounterScreenPr
             <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-4 text-sm text-zinc-300">
               {targetedRoute
                 ? "This Counter link was not found or you do not have access to it."
-                : "You don&apos;t have access to any Counters."}
+                : "You don't have access to any Counters."}
             </div>
           ) : counterAccessState === "error" ? (
             <div className="rounded-xl border border-red-900/60 bg-red-950/30 p-4 text-sm text-red-200">

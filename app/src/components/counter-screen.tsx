@@ -3,13 +3,7 @@ import { ChevronDown, GaugeIcon } from "lucide-react";
 
 import { PushNotifications } from "#/components/push-notifications.tsx";
 import { Button } from "#/components/ui/button.tsx";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "#/components/ui/card.tsx";
+import { Card, CardContent, CardHeader } from "#/components/ui/card.tsx";
 import { Skeleton } from "#/components/ui/skeleton.tsx";
 import { authBaseURL, authClient } from "#/lib/auth-client.ts";
 import {
@@ -47,9 +41,7 @@ async function counterAuthorizationHeader() {
 async function loadAvailableCounters(signal: AbortSignal) {
   const authorization = await counterAuthorizationHeader();
   const response = await fetch("/api/counter/available", {
-    headers: {
-      authorization,
-    },
+    headers: { authorization },
     signal,
   });
   const result = (await response.json()) as AvailableCountersResponse;
@@ -114,75 +106,13 @@ function CounterPageShell({ children }: { children: ReactNode }) {
   );
 }
 
-function CounterSelector({
-  counters,
-  selectedCounter,
-  selectedCounterKey,
-  onSelectedCounterKeyChange,
-}: {
-  counters: AvailableCounter[];
-  selectedCounter: AvailableCounter | null;
-  selectedCounterKey: string | null;
-  onSelectedCounterKeyChange: (value: string) => void;
-}) {
-  return (
-    <CounterPageShell>
-      <Card className="overflow-hidden border-zinc-800 bg-zinc-900 text-zinc-50 shadow-2xl shadow-black/20">
-        <CardHeader className="border-b border-zinc-800 px-4 py-4 sm:px-6">
-          <CardTitle>Open a Counter</CardTitle>
-          <CardDescription className="text-zinc-400">
-            Choose a location and counter once, then bookmark or add the resulting URL to the Home Screen.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4 p-4 sm:p-6">
-          <label className="block space-y-2">
-            <span className="text-sm font-medium text-zinc-300">Location / Counter</span>
-            <select
-              value={selectedCounterKey ?? ""}
-              onChange={(event) => onSelectedCounterKeyChange(event.target.value)}
-              className="w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100"
-              aria-label="Location and Counter"
-            >
-              {counters.map((counter) => (
-                <option key={counterKey(counter)} value={counterKey(counter)}>
-                  {counter.organizationName} · {counter.counterName}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          {selectedCounter ? (
-            <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-3 text-xs text-zinc-400">
-              Canonical URL:{" "}
-              <span className="font-mono text-zinc-300">
-                {canonicalCounterPath(selectedCounter)}
-              </span>
-            </div>
-          ) : null}
-
-          <Button
-            type="button"
-            className="h-12 w-full touch-manipulation rounded-xl text-base font-semibold"
-            disabled={!selectedCounter}
-            onClick={() => {
-              if (selectedCounter) {
-                window.location.assign(canonicalCounterPath(selectedCounter));
-              }
-            }}
-          >
-            Open Counter
-          </Button>
-        </CardContent>
-      </Card>
-    </CounterPageShell>
-  );
-}
-
 export function CounterScreen({ organizationSlug, counterSlug }: CounterScreenProps) {
   const targetedRoute = Boolean(organizationSlug && counterSlug);
   const { data: session, isPending } = authClient.useSession();
-  const { data: organizations } = authClient.useListOrganizations();
-  const { data: activeOrganization } = authClient.useActiveOrganization();
+  const { data: organizations, isPending: areOrganizationsPending } =
+    authClient.useListOrganizations();
+  const { data: activeOrganization, isPending: isActiveOrganizationPending } =
+    authClient.useActiveOrganization();
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [isResetHolding, setIsResetHolding] = useState(false);
   const [counterAccessState, setCounterAccessState] =
@@ -196,6 +126,13 @@ export function CounterScreen({ organizationSlug, counterSlug }: CounterScreenPr
   const selectedCounter =
     availableCounters.find((counter) => counterKey(counter) === selectedCounterKey) ??
     null;
+  const selectedOrganizationId =
+    selectedCounter?.organizationId ?? activeOrganization?.id ?? null;
+  const organizationCounters = selectedOrganizationId
+    ? availableCounters.filter(
+        (counter) => counter.organizationId === selectedOrganizationId,
+      )
+    : [];
   const locationId = selectedCounter?.counterId ?? null;
   const actor = session
     ? {
@@ -203,10 +140,10 @@ export function CounterScreen({ organizationSlug, counterSlug }: CounterScreenPr
         name: session.user.name || session.user.email,
       }
     : null;
-  const mqttLocationId =
-    targetedRoute && counterAccessState === "allowed" ? locationId : null;
+  const mqttLocationId = counterAccessState === "allowed" ? locationId : null;
   const { count, status, updatedAt, updatedBy, sendCommand } =
     useCounterMqtt(mqttLocationId, actor);
+  const isConnected = status === "connected";
 
   useEffect(() => {
     if (isPending || session) {
@@ -218,6 +155,30 @@ export function CounterScreen({ organizationSlug, counterSlug }: CounterScreenPr
 
     window.location.replace(signInURL);
   }, [isPending, session]);
+
+  useEffect(() => {
+    if (
+      targetedRoute ||
+      !session ||
+      areOrganizationsPending ||
+      isActiveOrganizationPending ||
+      activeOrganization ||
+      organizations?.length !== 1
+    ) {
+      return;
+    }
+
+    void authClient.organization.setActive({
+      organizationId: organizations[0].id,
+    });
+  }, [
+    activeOrganization,
+    areOrganizationsPending,
+    isActiveOrganizationPending,
+    organizations,
+    session,
+    targetedRoute,
+  ]);
 
   useEffect(() => {
     if (!session) {
@@ -260,21 +221,34 @@ export function CounterScreen({ organizationSlug, counterSlug }: CounterScreenPr
 
           setSelectedCounterKey(counterKey(matchedCounter));
           setCounterAccessState("allowed");
+
+          if (activeOrganization?.id !== matchedCounter.organizationId) {
+            void authClient.organization.setActive({
+              organizationId: matchedCounter.organizationId,
+            });
+          }
+
           return;
         }
 
+        if (!activeOrganization?.id) {
+          setSelectedCounterKey(null);
+          setCounterAccessState("idle");
+          return;
+        }
+
+        const scopedCounters = counters.filter(
+          (counter) => counter.organizationId === activeOrganization.id,
+        );
+
         setSelectedCounterKey((current) =>
-          current && counters.some((counter) => counterKey(counter) === current)
+          current && scopedCounters.some((counter) => counterKey(counter) === current)
             ? current
-            : counters[0]
-              ? counterKey(counters[0])
+            : scopedCounters[0]
+              ? counterKey(scopedCounters[0])
               : null,
         );
-        setCounterAccessState(counters.length > 0 ? "allowed" : "denied");
-
-        if (counters.length === 1) {
-          window.location.replace(canonicalCounterPath(counters[0]));
-        }
+        setCounterAccessState(scopedCounters.length > 0 ? "allowed" : "denied");
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;
@@ -290,21 +264,13 @@ export function CounterScreen({ organizationSlug, counterSlug }: CounterScreenPr
       });
 
     return () => controller.abort();
-  }, [counterSlug, organizationSlug, session, targetedRoute]);
-
-  useEffect(() => {
-    if (
-      !selectedCounter ||
-      activeOrganization?.id === selectedCounter.organizationId ||
-      !organizations?.some((organization) => organization.id === selectedCounter.organizationId)
-    ) {
-      return;
-    }
-
-    void authClient.organization.setActive({
-      organizationId: selectedCounter.organizationId,
-    });
-  }, [activeOrganization?.id, organizations, selectedCounter]);
+  }, [
+    activeOrganization?.id,
+    counterSlug,
+    organizationSlug,
+    session,
+    targetedRoute,
+  ]);
 
   useEffect(() => {
     return () => {
@@ -313,6 +279,18 @@ export function CounterScreen({ organizationSlug, counterSlug }: CounterScreenPr
       }
     };
   }, []);
+
+  function handleCounterChange(nextCounterKey: string) {
+    setSelectedCounterKey(nextCounterKey);
+
+    const nextCounter = availableCounters.find(
+      (counter) => counterKey(counter) === nextCounterKey,
+    );
+
+    if (targetedRoute && nextCounter) {
+      window.location.assign(canonicalCounterPath(nextCounter));
+    }
+  }
 
   function cancelResetHold() {
     if (resetTimerRef.current) {
@@ -344,18 +322,6 @@ export function CounterScreen({ organizationSlug, counterSlug }: CounterScreenPr
     return null;
   }
 
-  if (!targetedRoute && counterAccessState === "allowed") {
-    return (
-      <CounterSelector
-        counters={availableCounters}
-        selectedCounter={selectedCounter}
-        selectedCounterKey={selectedCounterKey}
-        onSelectedCounterKeyChange={setSelectedCounterKey}
-      />
-    );
-  }
-
-  const isConnected = status === "connected";
   const stateTopic = locationId
     ? `counters/${locationId}/capacity/state`
     : "—";
@@ -365,11 +331,28 @@ export function CounterScreen({ organizationSlug, counterSlug }: CounterScreenPr
       <Card className="overflow-hidden border-zinc-800 bg-zinc-900 text-zinc-50 shadow-2xl shadow-black/20">
         <CardHeader className="border-b border-zinc-800 px-4 py-2.5 sm:px-6 sm:py-4">
           <div className="flex items-center justify-between gap-4">
-            <span className="min-w-0 truncate text-sm font-medium text-zinc-300">
-              {selectedCounter
-                ? `${selectedCounter.organizationName} · ${selectedCounter.counterName}`
-                : ""}
-            </span>
+            {organizationCounters.length > 1 ? (
+              <select
+                value={selectedCounterKey ?? ""}
+                onChange={(event) => handleCounterChange(event.target.value)}
+                className="min-w-0 rounded-md border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-sm text-zinc-200"
+                aria-label="Counter"
+              >
+                {organizationCounters.map((counter) => (
+                  <option key={counterKey(counter)} value={counterKey(counter)}>
+                    {counter.counterName}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <span className="min-w-0 truncate text-sm font-medium text-zinc-300">
+                {selectedCounter
+                  ? selectedCounter.counterName
+                  : targetedRoute
+                    ? ""
+                    : "Select an organization"}
+              </span>
+            )}
             <div className="flex shrink-0 items-center gap-2 text-xs font-medium text-zinc-400">
               <span
                 className={`h-2.5 w-2.5 rounded-full ${
@@ -384,13 +367,15 @@ export function CounterScreen({ organizationSlug, counterSlug }: CounterScreenPr
         <CardContent className="space-y-3 p-4 sm:space-y-5 sm:p-6">
           {counterAccessState === "idle" || counterAccessState === "loading" ? (
             <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-4 text-sm text-zinc-400">
-              Checking Counter access…
+              {activeOrganization || targetedRoute
+                ? "Checking Counter access…"
+                : "Select an organization to use Counter."}
             </div>
           ) : counterAccessState === "denied" ? (
             <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-4 text-sm text-zinc-300">
               {targetedRoute
                 ? "This Counter link was not found or you do not have access to it."
-                : "You don't have access to any Counters."}
+                : "You don't have access to a Counter in this organization."}
             </div>
           ) : counterAccessState === "error" ? (
             <div className="rounded-xl border border-red-900/60 bg-red-950/30 p-4 text-sm text-red-200">

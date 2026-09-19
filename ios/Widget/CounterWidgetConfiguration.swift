@@ -26,6 +26,7 @@ struct CounterWidgetEntity: AppEntity, Identifiable, Hashable {
     let organizationID: String
     let organizationName: String
     let counterID: String
+    let counterName: String?
     let environment: CounterEnvironment
 
     init(selection: CounterSelection) {
@@ -33,13 +34,14 @@ struct CounterWidgetEntity: AppEntity, Identifiable, Hashable {
         organizationID = selection.organizationID
         organizationName = selection.organizationName
         counterID = selection.counterID
+        counterName = selection.counterName
         environment = selection.environment
     }
 
     var displayRepresentation: DisplayRepresentation {
         DisplayRepresentation(
-            title: "\(organizationName)",
-            subtitle: "\(counterID)"
+            title: "\(counterName?.isEmpty == false ? counterName! : counterID)",
+            subtitle: "\(organizationName)"
         )
     }
 
@@ -48,6 +50,7 @@ struct CounterWidgetEntity: AppEntity, Identifiable, Hashable {
             organizationID: organizationID,
             organizationName: organizationName,
             counterID: counterID,
+            counterName: counterName,
             environment: environment
         )
     }

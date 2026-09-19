@@ -67,7 +67,18 @@ struct CounterWidgetEntity: AppEntity, Identifiable, Hashable {
 struct CounterWidgetEntityQuery: EntityQuery {
     func entities(for identifiers: [CounterWidgetEntity.ID]) async throws -> [CounterWidgetEntity] {
         let requested = Set(identifiers)
-        return availableEntities().filter { requested.contains($0.id) }
+        let available = availableEntities()
+        let byID = Dictionary(uniqueKeysWithValues: available.map { ($0.id, $0) })
+
+        // Resolve persisted widget identifiers back through the current shared
+        // Counter list. This makes a newly-created widget use the same friendly
+        // display representation as the picker instead of rendering its raw ID.
+        return identifiers.compactMap { identifier in
+            guard requested.contains(identifier) else {
+                return nil
+            }
+            return byID[identifier]
+        }
     }
 
     func suggestedEntities() async throws -> [CounterWidgetEntity] {

@@ -27,6 +27,7 @@ class CounterApiClient(private val oauth: OAuthClient) {
                         organizationId = item.getString("organizationId"),
                         organizationName = item.getString("organizationName"),
                         counterId = item.getString("counterId"),
+                        counterName = item.optString("counterName").takeIf { it.isNotBlank() && it != "null" },
                         environment = environment,
                     ),
                 )

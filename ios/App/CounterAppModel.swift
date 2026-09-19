@@ -119,7 +119,6 @@ final class CounterAppModel: ObservableObject {
         }
 
         selected = nil
-        selectedOrganizationID = nil
         snapshot = nil
     }
 
@@ -198,6 +197,7 @@ final class CounterAppModel: ObservableObject {
         sharedStore?.clear()
         selections = []
         selected = nil
+        selectedOrganizationID = nil
         snapshot = nil
         signedIn = false
         errorMessage = nil

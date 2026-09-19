@@ -10,6 +10,7 @@ class CounterStore(context: Context) {
             .putString("organizationId", selection.organizationId)
             .putString("organizationName", selection.organizationName)
             .putString("counterId", selection.counterId)
+            .putString("counterName", selection.counterName)
             .putString("environment", selection.environment.name)
             .apply()
     }
@@ -18,8 +19,9 @@ class CounterStore(context: Context) {
         val organizationId = prefs.getString("organizationId", null) ?: return null
         val organizationName = prefs.getString("organizationName", null) ?: return null
         val counterId = prefs.getString("counterId", null) ?: return null
+        val counterName = prefs.getString("counterName", null)
         val environment = prefs.getString("environment", null)?.let(CounterEnvironment::valueOf) ?: return null
-        return CounterSelection(organizationId, organizationName, counterId, environment)
+        return CounterSelection(organizationId, organizationName, counterId, counterName, environment)
     }
 
     fun saveSnapshot(snapshot: CounterSnapshot) {

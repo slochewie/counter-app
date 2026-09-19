@@ -58,6 +58,7 @@ fun CounterApp(viewModel: CounterViewModel) {
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
     var accountMenuOpen by remember { mutableStateOf(false) }
+    var organizationMenuOpen by remember { mutableStateOf(false) }
     var counterMenuOpen by remember { mutableStateOf(false) }
     var resetting by remember { mutableStateOf(false) }
 
@@ -109,18 +110,45 @@ fun CounterApp(viewModel: CounterViewModel) {
                     )
                 } else {
                     Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        if (state.selections.size > 1) {
+                        val organizations = state.selections.distinctBy { it.organizationId }
+                        if (organizations.size > 1) {
+                            Box {
+                                OutlinedButton(onClick = { organizationMenuOpen = true }, modifier = Modifier.fillMaxWidth()) {
+                                    Text(
+                                        organizations.firstOrNull { it.organizationId == state.selectedOrganizationId }?.organizationName
+                                            ?: "Select an organization",
+                                    )
+                                }
+                                DropdownMenu(expanded = organizationMenuOpen, onDismissRequest = { organizationMenuOpen = false }) {
+                                    organizations.forEach { organization ->
+                                        DropdownMenuItem(
+                                            text = { Text(organization.organizationName) },
+                                            onClick = {
+                                                organizationMenuOpen = false
+                                                viewModel.selectOrganization(organization.organizationId)
+                                            },
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        val organizationId = state.selectedOrganizationId
+                        val counters = if (organizationId == null) emptyList() else {
+                            state.selections.filter { it.organizationId == organizationId }
+                        }
+                        if (counters.size > 1) {
                             Box {
                                 OutlinedButton(onClick = { counterMenuOpen = true }, modifier = Modifier.fillMaxWidth()) {
-                                    Text(state.selected?.organizationName ?: "Select a counter")
+                                    Text(state.selected?.counterDisplayName ?: "Select a counter")
                                 }
                                 DropdownMenu(expanded = counterMenuOpen, onDismissRequest = { counterMenuOpen = false }) {
-                                    state.selections.forEach { selection ->
+                                    counters.forEach { counter ->
                                         DropdownMenuItem(
-                                            text = { Text(selection.organizationName) },
+                                            text = { Text(counter.counterDisplayName) },
                                             onClick = {
                                                 counterMenuOpen = false
-                                                viewModel.select(selection)
+                                                viewModel.select(counter)
                                             },
                                         )
                                     }

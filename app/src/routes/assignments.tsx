@@ -27,6 +27,7 @@ import {
   type CounterManagementAccess,
   type EligibleOrganizationMember,
   createCounter,
+  deleteCounter,
   getCounterManagementAccess,
   listCounterAssignments,
   listCounters,
@@ -172,7 +173,7 @@ function CounterAssignments() {
         }
 
         if (counterResult.ok) {
-          setCounters(counterResult.value.filter((counter) => counter.enabled));
+          setCounters(counterResult.value);
         } else {
           setCounters([]);
           errors.push(
@@ -322,7 +323,6 @@ function CounterAssignments() {
       setCounters((current) =>
         current
           .map((item) => (item.id === counter.id ? counter : item))
-          .filter((item) => item.enabled)
           .sort((a, b) => a.name.localeCompare(b.name)),
       );
     } catch (error) {
@@ -350,11 +350,78 @@ function CounterAssignments() {
     setAssignmentsError(null);
 
     try {
-      await updateCounter(activeOrganization.id, counterId, { enabled: false });
-      setCounters((current) => current.filter((counter) => counter.id !== counterId));
+      const counter = await updateCounter(activeOrganization.id, counterId, { enabled: false });
+      setCounters((current) =>
+        current
+          .map((item) => (item.id === counter.id ? counter : item))
+          .sort((a, b) => Number(b.enabled) - Number(a.enabled) || a.name.localeCompare(b.name)),
+      );
     } catch (error) {
       setAssignmentsError(
         error instanceof Error ? error.message : "Unable to disable Counter.",
+      );
+    } finally {
+      setCounterDefinitionUpdating(false);
+    }
+  }
+
+  async function handleEnableCounter(counterId: string) {
+    if (
+      !activeOrganization?.id ||
+      !managementAccess?.canManageManagers ||
+      counterDefinitionUpdating
+    ) {
+      return;
+    }
+
+    setCounterDefinitionUpdating(true);
+    setAssignmentsError(null);
+
+    try {
+      const counter = await updateCounter(activeOrganization.id, counterId, {
+        enabled: true,
+      });
+      setCounters((current) =>
+        current
+          .map((item) => (item.id === counter.id ? counter : item))
+          .sort((a, b) => Number(b.enabled) - Number(a.enabled) || a.name.localeCompare(b.name)),
+      );
+    } catch (error) {
+      setAssignmentsError(
+        error instanceof Error ? error.message : "Unable to enable Counter.",
+      );
+    } finally {
+      setCounterDefinitionUpdating(false);
+    }
+  }
+
+  async function handleDeleteCounter(counterId: string, name: string) {
+    if (
+      !activeOrganization?.id ||
+      !managementAccess?.canManageManagers ||
+      counterDefinitionUpdating ||
+      !window.confirm(
+        `Permanently delete "${name}"? This removes its Counter assignments and cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+
+    setCounterDefinitionUpdating(true);
+    setAssignmentsError(null);
+
+    try {
+      await deleteCounter(activeOrganization.id, counterId);
+      setCounters((current) => current.filter((counter) => counter.id !== counterId));
+      setAssignments((current) =>
+        current.map((assignment) => ({
+          ...assignment,
+          counterIds: assignment.counterIds.filter((id) => id !== counterId),
+        })),
+      );
+    } catch (error) {
+      setAssignmentsError(
+        error instanceof Error ? error.message : "Unable to delete Counter.",
       );
     } finally {
       setCounterDefinitionUpdating(false);
@@ -547,7 +614,10 @@ function CounterAssignments() {
                     className="flex items-center justify-between gap-3 px-3 py-2.5"
                   >
                     <div className="min-w-0">
-                      <p className="truncate font-medium">{counter.name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="truncate font-medium">{counter.name}</p>
+                        {!counter.enabled ? <Badge variant="outline">Disabled</Badge> : null}
+                      </div>
                       <p className="truncate font-mono text-xs text-muted-foreground">
                         {counter.id}
                       </p>
@@ -565,24 +635,49 @@ function CounterAssignments() {
                         <PencilIcon />
                         Rename
                       </Button>
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="sm"
-                        disabled={counterDefinitionUpdating}
-                        onClick={() =>
-                          void handleDisableCounter(counter.id, counter.name)
-                        }
-                      >
-                        Disable
-                      </Button>
+                      {counter.enabled ? (
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          disabled={counterDefinitionUpdating}
+                          onClick={() =>
+                            void handleDisableCounter(counter.id, counter.name)
+                          }
+                        >
+                          Disable
+                        </Button>
+                      ) : (
+                        <>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={counterDefinitionUpdating}
+                            onClick={() => void handleEnableCounter(counter.id)}
+                          >
+                            Enable
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            disabled={counterDefinitionUpdating}
+                            onClick={() =>
+                              void handleDeleteCounter(counter.id, counter.name)
+                            }
+                          >
+                            Delete
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">
-                No enabled Counters are configured for this organization.
+                No Counters are configured for this organization.
               </p>
             )}
           </CardContent>
@@ -626,7 +721,7 @@ function CounterAssignments() {
             </div>
           ) : null}
 
-          {!assignmentsPending && activeOrganization && counters.length === 0 ? (
+          {!assignmentsPending && activeOrganization && counters.filter((counter) => counter.enabled).length === 0 ? (
             <p className="text-sm text-muted-foreground">
               This organization does not have a Counter configured yet.
             </p>
@@ -638,7 +733,7 @@ function CounterAssignments() {
             </p>
           ) : null}
 
-          {!assignmentsPending && counters.length > 0 && filteredMembers.length > 0 ? (
+          {!assignmentsPending && counters.some((counter) => counter.enabled) && filteredMembers.length > 0 ? (
             <div className="overflow-x-auto rounded-md border">
               <Table>
                 <TableHeader>
@@ -700,7 +795,7 @@ function CounterAssignments() {
                         ) : null}
                         <TableCell>
                           <div className="flex min-w-max flex-wrap gap-2">
-                            {counters.map((counter) => {
+                            {counters.filter((counter) => counter.enabled).map((counter) => {
                               const enabled =
                                 assignmentMap.get(member.userId)?.has(counter.id) ??
                                 false;

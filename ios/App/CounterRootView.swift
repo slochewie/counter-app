@@ -121,9 +121,13 @@ struct CounterRootView: View {
 
                         ForEach(model.organizations, id: \.organizationID) { organization in
                             Text(organization.organizationName)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
                                 .tag(Optional(organization.organizationID))
                         }
                     }
+                    .lineLimit(1)
+                    .truncationMode(.tail)
                 }
             }
 

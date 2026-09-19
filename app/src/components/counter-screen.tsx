@@ -106,6 +106,14 @@ function CounterPageShell({ children }: { children: ReactNode }) {
   );
 }
 
+function replaceUrlForCounter(counter: AvailableCounter) {
+  const canonicalPath = canonicalCounterPath(counter);
+
+  if (window.location.pathname !== canonicalPath) {
+    window.history.replaceState(null, "", canonicalPath);
+  }
+}
+
 export function CounterScreen({ organizationSlug, counterSlug }: CounterScreenProps) {
   const targetedRoute = Boolean(organizationSlug && counterSlug);
   const { data: session, isPending } = authClient.useSession();
@@ -123,6 +131,7 @@ export function CounterScreen({ organizationSlug, counterSlug }: CounterScreenPr
     null,
   );
   const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const targetRouteInitializedRef = useRef(false);
   const selectedCounter =
     availableCounters.find((counter) => counterKey(counter) === selectedCounterKey) ??
     null;
@@ -144,6 +153,10 @@ export function CounterScreen({ organizationSlug, counterSlug }: CounterScreenPr
   const { count, status, updatedAt, updatedBy, sendCommand } =
     useCounterMqtt(mqttLocationId, actor);
   const isConnected = status === "connected";
+
+  useEffect(() => {
+    targetRouteInitializedRef.current = false;
+  }, [counterSlug, organizationSlug]);
 
   useEffect(() => {
     if (isPending || session) {
@@ -213,14 +226,32 @@ export function CounterScreen({ organizationSlug, counterSlug }: CounterScreenPr
             return;
           }
 
-          const canonicalPath = canonicalCounterPath(matchedCounter);
+          if (
+            targetRouteInitializedRef.current &&
+            activeOrganization?.id &&
+            activeOrganization.id !== matchedCounter.organizationId
+          ) {
+            const activeOrganizationCounters = counters.filter(
+              (counter) => counter.organizationId === activeOrganization.id,
+            );
+            const nextCounter = activeOrganizationCounters[0];
 
-          if (window.location.pathname !== canonicalPath) {
-            window.history.replaceState(null, "", canonicalPath);
+            if (!nextCounter) {
+              setSelectedCounterKey(null);
+              setCounterAccessState("denied");
+              return;
+            }
+
+            setSelectedCounterKey(counterKey(nextCounter));
+            setCounterAccessState("allowed");
+            replaceUrlForCounter(nextCounter);
+            return;
           }
 
+          targetRouteInitializedRef.current = true;
           setSelectedCounterKey(counterKey(matchedCounter));
           setCounterAccessState("allowed");
+          replaceUrlForCounter(matchedCounter);
 
           if (activeOrganization?.id !== matchedCounter.organizationId) {
             void authClient.organization.setActive({
@@ -273,6 +304,14 @@ export function CounterScreen({ organizationSlug, counterSlug }: CounterScreenPr
   ]);
 
   useEffect(() => {
+    if (!selectedCounter || counterAccessState !== "allowed") {
+      return;
+    }
+
+    replaceUrlForCounter(selectedCounter);
+  }, [counterAccessState, selectedCounter]);
+
+  useEffect(() => {
     return () => {
       if (resetTimerRef.current) {
         clearTimeout(resetTimerRef.current);
@@ -287,8 +326,8 @@ export function CounterScreen({ organizationSlug, counterSlug }: CounterScreenPr
       (counter) => counterKey(counter) === nextCounterKey,
     );
 
-    if (targetedRoute && nextCounter) {
-      window.location.assign(canonicalCounterPath(nextCounter));
+    if (nextCounter) {
+      replaceUrlForCounter(nextCounter);
     }
   }
 

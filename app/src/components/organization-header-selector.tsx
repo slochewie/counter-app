@@ -102,16 +102,24 @@ export function OrganizationHeaderSelector() {
       loading={areOrganizationsPending || isActiveOrganizationPending}
       className="w-28 min-w-0 sm:w-48 lg:w-56"
       onValueChange={(organizationId) => {
-        void authClient.organization.setActive({ organizationId })
+        void (async () => {
+          void authClient.organization.setActive({ organizationId })
 
-        const counter = availableCounters.find(
-          (availableCounter) =>
-            availableCounter.organizationId === organizationId,
-        )
+          let counters = availableCounters
+          if (counters.length === 0) {
+            counters = await loadAvailableCounters(new AbortController().signal)
+            setAvailableCounters(counters)
+          }
 
-        if (counter) {
-          window.location.assign(canonicalCounterPath(counter))
-        }
+          const counter = counters.find(
+            (availableCounter) =>
+              availableCounter.organizationId === organizationId,
+          )
+
+          if (counter) {
+            window.location.assign(canonicalCounterPath(counter))
+          }
+        })()
       }}
     />
   )

@@ -11,8 +11,13 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AssignmentsRouteImport } from './routes/assignments'
+import { Route as OrganizationSlugCounterSlugRouteImport } from './routes/$organizationSlug.$counterSlug'
+import { Route as ApiCounterAvailableRouteImport } from './routes/api/counter.available'
+import { Route as ApiCounterCommandRouteImport } from './routes/api/counter.command'
+import { Route as ApiCounterStateRouteImport } from './routes/api/counter.state'
 import { Route as ApiPushRouteImport } from './routes/api/push'
 import { Route as ApiPushConfigRouteImport } from './routes/api/push.config'
+import { Route as ApiPushTestRouteImport } from './routes/api/push.test'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -22,6 +27,26 @@ const IndexRoute = IndexRouteImport.update({
 const AssignmentsRoute = AssignmentsRouteImport.update({
   id: '/assignments',
   path: '/assignments',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OrganizationSlugCounterSlugRoute = OrganizationSlugCounterSlugRouteImport.update({
+  id: '/$organizationSlug/$counterSlug',
+  path: '/$organizationSlug/$counterSlug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCounterAvailableRoute = ApiCounterAvailableRouteImport.update({
+  id: '/api/counter/available',
+  path: '/api/counter/available',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCounterCommandRoute = ApiCounterCommandRouteImport.update({
+  id: '/api/counter/command',
+  path: '/api/counter/command',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCounterStateRoute = ApiCounterStateRouteImport.update({
+  id: '/api/counter/state',
+  path: '/api/counter/state',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPushRoute = ApiPushRouteImport.update({
@@ -34,37 +59,89 @@ const ApiPushConfigRoute = ApiPushConfigRouteImport.update({
   path: '/config',
   getParentRoute: () => ApiPushRoute,
 } as any)
+const ApiPushTestRoute = ApiPushTestRouteImport.update({
+  id: '/test',
+  path: '/test',
+  getParentRoute: () => ApiPushRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/assignments': typeof AssignmentsRoute
+  '/$organizationSlug/$counterSlug': typeof OrganizationSlugCounterSlugRoute
+  '/api/counter/available': typeof ApiCounterAvailableRoute
+  '/api/counter/command': typeof ApiCounterCommandRoute
+  '/api/counter/state': typeof ApiCounterStateRoute
   '/api/push': typeof ApiPushRouteWithChildren
   '/api/push/config': typeof ApiPushConfigRoute
+  '/api/push/test': typeof ApiPushTestRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/assignments': typeof AssignmentsRoute
+  '/$organizationSlug/$counterSlug': typeof OrganizationSlugCounterSlugRoute
+  '/api/counter/available': typeof ApiCounterAvailableRoute
+  '/api/counter/command': typeof ApiCounterCommandRoute
+  '/api/counter/state': typeof ApiCounterStateRoute
   '/api/push': typeof ApiPushRouteWithChildren
   '/api/push/config': typeof ApiPushConfigRoute
+  '/api/push/test': typeof ApiPushTestRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/assignments': typeof AssignmentsRoute
+  '/$organizationSlug/$counterSlug': typeof OrganizationSlugCounterSlugRoute
+  '/api/counter/available': typeof ApiCounterAvailableRoute
+  '/api/counter/command': typeof ApiCounterCommandRoute
+  '/api/counter/state': typeof ApiCounterStateRoute
   '/api/push': typeof ApiPushRouteWithChildren
   '/api/push/config': typeof ApiPushConfigRoute
+  '/api/push/test': typeof ApiPushTestRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/assignments' | '/api/push' | '/api/push/config'
+  fullPaths:
+    | '/'
+    | '/assignments'
+    | '/$organizationSlug/$counterSlug'
+    | '/api/counter/available'
+    | '/api/counter/command'
+    | '/api/counter/state'
+    | '/api/push'
+    | '/api/push/config'
+    | '/api/push/test'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/assignments' | '/api/push' | '/api/push/config'
-  id: '__root__' | '/' | '/assignments' | '/api/push' | '/api/push/config'
+  to:
+    | '/'
+    | '/assignments'
+    | '/$organizationSlug/$counterSlug'
+    | '/api/counter/available'
+    | '/api/counter/command'
+    | '/api/counter/state'
+    | '/api/push'
+    | '/api/push/config'
+    | '/api/push/test'
+  id:
+    | '__root__'
+    | '/'
+    | '/assignments'
+    | '/$organizationSlug/$counterSlug'
+    | '/api/counter/available'
+    | '/api/counter/command'
+    | '/api/counter/state'
+    | '/api/push'
+    | '/api/push/config'
+    | '/api/push/test'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AssignmentsRoute: typeof AssignmentsRoute
+  OrganizationSlugCounterSlugRoute: typeof OrganizationSlugCounterSlugRoute
+  ApiCounterAvailableRoute: typeof ApiCounterAvailableRoute
+  ApiCounterCommandRoute: typeof ApiCounterCommandRoute
+  ApiCounterStateRoute: typeof ApiCounterStateRoute
   ApiPushRoute: typeof ApiPushRouteWithChildren
 }
 
@@ -84,6 +161,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AssignmentsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/$organizationSlug/$counterSlug': {
+      id: '/$organizationSlug/$counterSlug'
+      path: '/$organizationSlug/$counterSlug'
+      fullPath: '/$organizationSlug/$counterSlug'
+      preLoaderRoute: typeof OrganizationSlugCounterSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/counter/available': {
+      id: '/api/counter/available'
+      path: '/api/counter/available'
+      fullPath: '/api/counter/available'
+      preLoaderRoute: typeof ApiCounterAvailableRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/counter/command': {
+      id: '/api/counter/command'
+      path: '/api/counter/command'
+      fullPath: '/api/counter/command'
+      preLoaderRoute: typeof ApiCounterCommandRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/counter/state': {
+      id: '/api/counter/state'
+      path: '/api/counter/state'
+      fullPath: '/api/counter/state'
+      preLoaderRoute: typeof ApiCounterStateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/push': {
       id: '/api/push'
       path: '/api/push'
@@ -98,15 +203,24 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPushConfigRouteImport
       parentRoute: typeof ApiPushRoute
     }
+    '/api/push/test': {
+      id: '/api/push/test'
+      path: '/test'
+      fullPath: '/api/push/test'
+      preLoaderRoute: typeof ApiPushTestRouteImport
+      parentRoute: typeof ApiPushRoute
+    }
   }
 }
 
 interface ApiPushRouteChildren {
   ApiPushConfigRoute: typeof ApiPushConfigRoute
+  ApiPushTestRoute: typeof ApiPushTestRoute
 }
 
 const ApiPushRouteChildren: ApiPushRouteChildren = {
   ApiPushConfigRoute: ApiPushConfigRoute,
+  ApiPushTestRoute: ApiPushTestRoute,
 }
 
 const ApiPushRouteWithChildren =
@@ -115,6 +229,10 @@ const ApiPushRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AssignmentsRoute: AssignmentsRoute,
+  OrganizationSlugCounterSlugRoute: OrganizationSlugCounterSlugRoute,
+  ApiCounterAvailableRoute: ApiCounterAvailableRoute,
+  ApiCounterCommandRoute: ApiCounterCommandRoute,
+  ApiCounterStateRoute: ApiCounterStateRoute,
   ApiPushRoute: ApiPushRouteWithChildren,
 }
 export const routeTree = rootRouteImport

@@ -33,6 +33,7 @@ class CounterViewModel : ViewModel() {
         val signedIn: Boolean = false,
         val selections: List<CounterSelection> = emptyList(),
         val selected: CounterSelection? = null,
+        val selectedOrganizationId: String? = null,
         val snapshot: CounterSnapshot? = null,
         val busy: Boolean = false,
         val error: String? = null,
@@ -58,6 +59,7 @@ class CounterViewModel : ViewModel() {
         val selected = store?.loadSelection()
         mutableState.value = mutableState.value.copy(
             selected = selected,
+            selectedOrganizationId = selected?.organizationId,
             snapshot = selected?.let { store?.loadSnapshot(it) },
         )
         if (selected != null) restore(selected.environment)
@@ -86,13 +88,22 @@ class CounterViewModel : ViewModel() {
 
     private suspend fun loadAssignments(environment: CounterEnvironment) {
         val selections = withContext(Dispatchers.IO) { requireNotNull(api).availableCounters(environment) }
+        val previous = mutableState.value.selected
         val selected = when {
+            previous != null -> selections.firstOrNull {
+                it.organizationId == previous.organizationId && it.counterId == previous.counterId
+            }
             selections.size == 1 -> selections.first()
-            mutableState.value.selected in selections -> mutableState.value.selected
+            selections.map { it.organizationId }.distinct().size == 1 -> selections.firstOrNull()
             else -> null
         }
         if (selected != null) store?.saveSelection(selected)
-        mutableState.value = mutableState.value.copy(signedIn = true, selections = selections, selected = selected)
+        mutableState.value = mutableState.value.copy(
+            signedIn = true,
+            selections = selections,
+            selected = selected,
+            selectedOrganizationId = selected?.organizationId,
+        )
         if (selected != null) {
             refreshInternal(silent = true)
             registerFcmToken(selected)
@@ -100,9 +111,38 @@ class CounterViewModel : ViewModel() {
         startPolling()
     }
 
+    fun organizations(): List<CounterSelection> =
+        mutableState.value.selections.distinctBy { it.organizationId }
+
+    fun countersFor(organizationId: String): List<CounterSelection> =
+        mutableState.value.selections.filter { it.organizationId == organizationId }
+
+    fun selectOrganization(organizationId: String) {
+        val counters = countersFor(organizationId)
+        val current = mutableState.value.selected
+        val selection = if (current?.organizationId == organizationId &&
+            counters.any { it.counterId == current.counterId }
+        ) current else counters.firstOrNull()
+
+        mutableState.value = mutableState.value.copy(
+            selectedOrganizationId = organizationId,
+            selected = selection,
+            snapshot = selection?.let { store?.loadSnapshot(it) },
+        )
+        if (selection != null) {
+            store?.saveSelection(selection)
+            refresh()
+            viewModelScope.launch { registerFcmToken(selection) }
+        }
+    }
+
     fun select(selection: CounterSelection) {
         store?.saveSelection(selection)
-        mutableState.value = mutableState.value.copy(selected = selection)
+        mutableState.value = mutableState.value.copy(
+            selected = selection,
+            selectedOrganizationId = selection.organizationId,
+            snapshot = store?.loadSnapshot(selection),
+        )
         refresh()
         viewModelScope.launch { registerFcmToken(selection) }
     }

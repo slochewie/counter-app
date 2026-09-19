@@ -119,17 +119,20 @@ final class CounterAppModel: ObservableObject {
         selectedOrganizationID = organizationID
         let counters = counters(for: organizationID)
 
-        if counters.count == 1, let counter = counters.first {
-            try select(counter)
+        guard let firstCounter = counters.first else {
+            selected = nil
+            snapshot = nil
             return
         }
 
-        if let selected, selected.organizationID == organizationID {
+        if let selected, selected.organizationID == organizationID,
+           counters.contains(where: { $0.counterID == selected.counterID }) {
             return
         }
 
-        selected = nil
-        snapshot = nil
+        // Discovery preserves the Auth service's Counter ordering, so the
+        // first accessible Counter is the oldest/first-created assignment.
+        try select(firstCounter)
     }
 
     func select(_ selection: CounterSelection) throws {

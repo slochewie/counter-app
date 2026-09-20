@@ -114,64 +114,66 @@ struct CounterRootView: View {
     private var signedInView: some View {
         List {
             if model.organizations.count > 1 {
-                Section {
-                    HStack {
-                        Text("Organization")
-
-                        Spacer(minLength: 12)
-
-                        Menu {
-                            ForEach(model.organizations, id: \.organizationID) { organization in
-                                Button {
-                                    do {
-                                        try model.selectOrganization(organization.organizationID)
-                                        if model.selected != nil {
-                                            Task {
-                                                await model.refresh()
-                                            }
-                                        }
-                                    } catch {
-                                        model.errorMessage = error.localizedDescription
-                                    }
-                                } label: {
-                                    if organization.organizationID == model.selectedOrganizationID {
-                                        Label(organization.organizationName, systemImage: "checkmark")
-                                    } else {
-                                        Text(organization.organizationName)
+                Menu {
+                    ForEach(model.organizations, id: \.organizationID) { organization in
+                        Button {
+                            do {
+                                try model.selectOrganization(organization.organizationID)
+                                if model.selected != nil {
+                                    Task {
+                                        await model.refresh()
                                     }
                                 }
+                            } catch {
+                                model.errorMessage = error.localizedDescription
                             }
                         } label: {
-                            HStack(spacing: 4) {
-                                Text(selectedOrganizationName)
-                                    .lineLimit(1)
-                                    .truncationMode(.tail)
-
-                                Image(systemName: "chevron.up.chevron.down")
-                                    .font(.caption)
+                            if organization.organizationID == model.selectedOrganizationID {
+                                Label(organization.organizationName, systemImage: "checkmark")
+                            } else {
+                                Text(organization.organizationName)
                             }
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: 210, alignment: .trailing)
                         }
                     }
+                } label: {
+                    selectorLabel(selectedOrganizationName)
                 }
+                .buttonStyle(.plain)
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20))
+                .accessibilityLabel("Organization")
             }
 
             if let organizationID = model.selectedOrganizationID {
                 let counters = model.counters(for: organizationID)
 
                 if counters.count > 1 {
-                    Section {
-                        Picker("Counter", selection: selectedBinding) {
-                            Text("Select a counter")
-                                .tag(Optional<CounterSelection>.none)
-
-                            ForEach(counters, id: \.counterID) { counter in
-                                Text(counter.counterDisplayName)
-                                    .tag(Optional(counter))
+                    Menu {
+                        ForEach(counters, id: \.counterID) { counter in
+                            Button {
+                                do {
+                                    try model.select(counter)
+                                    Task {
+                                        await model.refresh()
+                                    }
+                                } catch {
+                                    model.errorMessage = error.localizedDescription
+                                }
+                            } label: {
+                                if counter.counterID == model.selected?.counterID {
+                                    Label(counter.counterDisplayName, systemImage: "checkmark")
+                                } else {
+                                    Text(counter.counterDisplayName)
+                                }
                             }
                         }
+                    } label: {
+                        selectorLabel(model.selected?.counterDisplayName ?? "Select a counter")
                     }
+                    .buttonStyle(.plain)
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20))
+                    .accessibilityLabel("Counter")
                 }
             }
 
@@ -282,6 +284,21 @@ struct CounterRootView: View {
                 await model.refreshSilently()
             }
         }
+    }
+
+    private func selectorLabel(_ title: String) -> some View {
+        Text(title)
+            .font(.body.weight(.semibold))
+            .foregroundStyle(.primary)
+            .lineLimit(1)
+            .truncationMode(.tail)
+            .frame(maxWidth: .infinity, minHeight: 50)
+            .padding(.horizontal, 16)
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(.secondary.opacity(0.55), lineWidth: 1)
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     private var selectedOrganizationName: String {

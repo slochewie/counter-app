@@ -149,6 +149,13 @@ struct CounterWidgetEntryView: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
 
+            if let counterName = selectedCounterName {
+                Text(counterName)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
             Spacer(minLength: 0)
 
             Text(snapshot.count.formatted())
@@ -169,6 +176,13 @@ struct CounterWidgetEntryView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
+
+                if let counterName = selectedCounterName {
+                    Text(counterName)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
 
                 Text(snapshot.count.formatted())
                     .font(.system(size: 52, weight: .bold, design: .rounded))
@@ -207,10 +221,10 @@ struct CounterWidgetEntryView: View {
             AccessoryWidgetBackground()
 
             VStack(spacing: -1) {
-                Text(counterAbbreviation(snapshot.organizationName))
+                Text(circularLabel(snapshot.organizationName))
                     .font(.system(size: 9, weight: .semibold, design: .rounded))
                     .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+                    .minimumScaleFactor(0.55)
 
                 Text(snapshot.count.formatted())
                     .font(.system(size: 24, weight: .bold, design: .rounded))
@@ -256,6 +270,12 @@ struct CounterWidgetEntryView: View {
                 .fontWeight(.semibold)
                 .lineLimit(1)
 
+            if let counterName = selectedCounterName {
+                Text(counterName)
+                    .font(.caption2)
+                    .lineLimit(1)
+            }
+
             Text(snapshot.count.formatted())
                 .font(.system(.title, design: .rounded, weight: .bold))
                 .monospacedDigit()
@@ -266,9 +286,35 @@ struct CounterWidgetEntryView: View {
     }
 
     private func accessoryInline(_ snapshot: CounterSnapshot) -> some View {
-        Text("\(snapshot.organizationName) · \(snapshot.count.formatted())")
+        Text(inlineLabel(snapshot))
             .lineLimit(1)
             .widgetAccentable()
+    }
+
+    private var selectedCounterName: String? {
+        guard let selection = entry.selection else {
+            return nil
+        }
+
+        let name = selection.counterDisplayName
+        return name == selection.organizationName ? nil : name
+    }
+
+    private func circularLabel(_ organizationName: String) -> String {
+        let organization = counterAbbreviation(organizationName)
+        guard let counterName = selectedCounterName else {
+            return organization
+        }
+
+        return "\(organization) · \(counterAbbreviation(counterName))"
+    }
+
+    private func inlineLabel(_ snapshot: CounterSnapshot) -> String {
+        if let counterName = selectedCounterName {
+            return "\(snapshot.organizationName) · \(counterName) · \(snapshot.count.formatted())"
+        }
+
+        return "\(snapshot.organizationName) · \(snapshot.count.formatted())"
     }
 
     private var configuredCounter: CounterWidgetEntity? {

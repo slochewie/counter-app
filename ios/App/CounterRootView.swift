@@ -178,7 +178,7 @@ struct CounterRootView: View {
             }
 
             if let selection = model.selected {
-                Section(selection.organizationName) {
+                Section {
                     HStack {
                         Spacer()
                         Text(model.snapshot.map { String($0.count) } ?? "—")

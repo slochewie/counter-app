@@ -2,6 +2,7 @@ import SwiftUI
 
 struct CounterRootView: View {
     @Environment(\.openURL) private var openURL
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @ObservedObject var model: CounterAppModel
     @GestureState private var resetPressed = false
 
@@ -18,7 +19,7 @@ struct CounterRootView: View {
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Text("Capacity Counter")
-                        .font(.title2.bold())
+                        .font(isWideLayout ? .title.bold() : .title2.bold())
                 }
 
                 if model.signedIn {
@@ -47,10 +48,10 @@ struct CounterRootView: View {
                                     .fill(.secondary.opacity(0.18))
 
                                 Image(systemName: "person.fill")
-                                    .font(.system(size: 15, weight: .semibold))
+                                    .font(.system(size: isWideLayout ? 18 : 15, weight: .semibold))
                                     .foregroundStyle(.primary)
                             }
-                            .frame(width: 32, height: 32)
+                            .frame(width: isWideLayout ? 40 : 32, height: isWideLayout ? 40 : 32)
                             .contentShape(Circle())
                         }
                         .accessibilityLabel("Account menu")
@@ -79,16 +80,17 @@ struct CounterRootView: View {
     }
 
     private var signInView: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: isWideLayout ? 22 : 16) {
             Spacer()
 
             Image(systemName: "person.crop.circle.badge.checkmark")
-                .font(.system(size: 52))
+                .font(.system(size: isWideLayout ? 72 : 52))
 
             Text("Sign in to NiteOwl Counter")
-                .font(.title2.bold())
+                .font(isWideLayout ? .title.bold() : .title2.bold())
 
             Text("Use your NiteOwl account to load the counters assigned to you.")
+                .font(isWideLayout ? .title3 : .body)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
 
@@ -98,6 +100,7 @@ struct CounterRootView: View {
                 }
             }
             .buttonStyle(.borderedProminent)
+            .controlSize(isWideLayout ? .large : .regular)
 
             Button("Sign in with McCarthy’s") {
                 Task {
@@ -105,11 +108,12 @@ struct CounterRootView: View {
                 }
             }
             .buttonStyle(.bordered)
+            .controlSize(isWideLayout ? .large : .regular)
 
             Spacer()
         }
-        .padding()
-        .frame(maxWidth: 560)
+        .padding(isWideLayout ? 32 : 16)
+        .frame(maxWidth: isWideLayout ? 680 : 560)
         .frame(maxWidth: .infinity)
     }
 
@@ -133,7 +137,7 @@ struct CounterRootView: View {
                 }
                 .buttonStyle(.plain)
                 .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20))
+                .listRowInsets(selectorInsets)
                 .accessibilityLabel("Organization")
             }
 
@@ -158,7 +162,7 @@ struct CounterRootView: View {
                     }
                     .buttonStyle(.plain)
                     .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20))
+                    .listRowInsets(selectorInsets)
                     .accessibilityLabel("Counter")
                 }
             }
@@ -168,24 +172,24 @@ struct CounterRootView: View {
                     HStack {
                         Spacer()
                         Text(model.snapshot.map { String($0.count) } ?? "—")
-                            .font(.system(size: 72, weight: .semibold, design: .rounded))
+                            .font(.system(size: isWideLayout ? 108 : 72, weight: .semibold, design: .rounded))
                             .monospacedDigit()
                         Spacer()
                     }
-                    .padding(.vertical, 16)
+                    .padding(.vertical, isWideLayout ? 28 : 16)
 
-                    HStack(spacing: 12) {
+                    HStack(spacing: isWideLayout ? 18 : 12) {
                         Button {
                             Task {
                                 await model.send(.decrement)
                             }
                         } label: {
                             Text("−1")
-                                .font(.system(size: 34, weight: .bold, design: .rounded))
+                                .font(.system(size: isWideLayout ? 46 : 34, weight: .bold, design: .rounded))
                                 .foregroundStyle(Color.black)
-                                .frame(maxWidth: .infinity, minHeight: 76)
+                                .frame(maxWidth: .infinity, minHeight: isWideLayout ? 104 : 76)
                                 .background(Color(red: 245 / 255, green: 206 / 255, blue: 69 / 255))
-                                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                                .clipShape(RoundedRectangle(cornerRadius: isWideLayout ? 22 : 18, style: .continuous))
                         }
                         .buttonStyle(.plain)
 
@@ -195,26 +199,26 @@ struct CounterRootView: View {
                             }
                         } label: {
                             Text("+1")
-                                .font(.system(size: 34, weight: .bold, design: .rounded))
+                                .font(.system(size: isWideLayout ? 46 : 34, weight: .bold, design: .rounded))
                                 .foregroundStyle(Color.white)
-                                .frame(maxWidth: .infinity, minHeight: 76)
+                                .frame(maxWidth: .infinity, minHeight: isWideLayout ? 104 : 76)
                                 .background(Color(red: 80 / 255, green: 117 / 255, blue: 187 / 255))
-                                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                                .clipShape(RoundedRectangle(cornerRadius: isWideLayout ? 22 : 18, style: .continuous))
                         }
                         .buttonStyle(.plain)
                     }
                     .disabled(model.busy)
 
                     Text(resetPressed ? "Keep Holding…" : "Reset")
-                        .font(.headline)
+                        .font(isWideLayout ? .title3.bold() : .headline)
                         .foregroundStyle(Color(red: 1.0, green: 0.38, blue: 0.38))
-                        .frame(maxWidth: .infinity, minHeight: 50)
+                        .frame(maxWidth: .infinity, minHeight: isWideLayout ? 68 : 50)
                         .background(
                             resetPressed
                                 ? Color(red: 0.25, green: 0.10, blue: 0.11)
                                 : Color(red: 0.34, green: 0.16, blue: 0.17)
                         )
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: isWideLayout ? 16 : 12, style: .continuous))
                         .contentShape(Rectangle())
                         .opacity(model.busy ? 0.45 : 1)
                         .gesture(
@@ -240,6 +244,7 @@ struct CounterRootView: View {
                         }
                     } label: {
                         Image(systemName: "arrow.clockwise")
+                            .font(isWideLayout ? .title2 : .body)
                     }
                     .accessibilityLabel("Refresh")
                     .disabled(model.busy)
@@ -258,7 +263,7 @@ struct CounterRootView: View {
                 )
             }
         }
-        .frame(maxWidth: 640)
+        .frame(maxWidth: isWideLayout ? 860 : 640)
         .frame(maxWidth: .infinity)
         .refreshable {
             await model.refresh()
@@ -272,6 +277,19 @@ struct CounterRootView: View {
                 await model.refreshSilently()
             }
         }
+    }
+
+    private var isWideLayout: Bool {
+        horizontalSizeClass == .regular
+    }
+
+    private var selectorInsets: EdgeInsets {
+        EdgeInsets(
+            top: isWideLayout ? 10 : 6,
+            leading: isWideLayout ? 28 : 20,
+            bottom: isWideLayout ? 10 : 6,
+            trailing: isWideLayout ? 28 : 20
+        )
     }
 
     private func selectOrganization(_ organizationID: String) {
@@ -302,17 +320,17 @@ struct CounterRootView: View {
 
     private func selectorLabel(_ title: String) -> some View {
         Text(title)
-            .font(.body.weight(.semibold))
+            .font(isWideLayout ? .title3.weight(.semibold) : .body.weight(.semibold))
             .foregroundStyle(.primary)
             .lineLimit(1)
             .truncationMode(.tail)
-            .frame(maxWidth: .infinity, minHeight: 50)
-            .padding(.horizontal, 16)
+            .frame(maxWidth: .infinity, minHeight: isWideLayout ? 64 : 50)
+            .padding(.horizontal, isWideLayout ? 22 : 16)
             .overlay {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                RoundedRectangle(cornerRadius: isWideLayout ? 20 : 16, style: .continuous)
                     .stroke(.secondary.opacity(0.55), lineWidth: 1)
             }
-            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: isWideLayout ? 20 : 16, style: .continuous))
     }
 
     private var selectedOrganizationName: String {

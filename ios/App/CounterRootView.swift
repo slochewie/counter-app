@@ -119,16 +119,7 @@ struct CounterRootView: View {
                 Menu {
                     ForEach(model.organizations, id: \.organizationID) { organization in
                         Button {
-                            do {
-                                try model.selectOrganization(organization.organizationID)
-                                if model.selected != nil {
-                                    Task {
-                                        await model.refresh()
-                                    }
-                                }
-                            } catch {
-                                model.errorMessage = error.localizedDescription
-                            }
+                            selectOrganization(organization.organizationID)
                         } label: {
                             if organization.organizationID == model.selectedOrganizationID {
                                 Label(organization.organizationName, systemImage: "checkmark")
@@ -153,14 +144,7 @@ struct CounterRootView: View {
                     Menu {
                         ForEach(counters, id: \.counterID) { counter in
                             Button {
-                                do {
-                                    try model.select(counter)
-                                    Task {
-                                        await model.refresh()
-                                    }
-                                } catch {
-                                    model.errorMessage = error.localizedDescription
-                                }
+                                selectCounter(counter)
                             } label: {
                                 if counter.counterID == model.selected?.counterID {
                                     Label(counter.counterDisplayName, systemImage: "checkmark")
@@ -286,6 +270,32 @@ struct CounterRootView: View {
                     return
                 }
                 await model.refreshSilently()
+            }
+        }
+    }
+
+    private func selectOrganization(_ organizationID: String) {
+        Task { @MainActor in
+            await Task.yield()
+            do {
+                try model.selectOrganization(organizationID)
+                if model.selected != nil {
+                    await model.refresh()
+                }
+            } catch {
+                model.errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    private func selectCounter(_ counter: CounterSelection) {
+        Task { @MainActor in
+            await Task.yield()
+            do {
+                try model.select(counter)
+                await model.refresh()
+            } catch {
+                model.errorMessage = error.localizedDescription
             }
         }
     }

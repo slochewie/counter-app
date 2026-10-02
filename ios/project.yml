@@ -43,7 +43,7 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         PRODUCT_BUNDLE_IDENTIFIER: dev.niteowl.counter
         PRODUCT_NAME: NiteOwlCounter
-        TARGETED_DEVICE_FAMILY: "1"
+        TARGETED_DEVICE_FAMILY: "1,2"
     dependencies:
       - target: CounterWidget
         embed: true
@@ -73,7 +73,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: dev.niteowl.counter.widget
         PRODUCT_NAME: CounterWidget
         SKIP_INSTALL: YES
-        TARGETED_DEVICE_FAMILY: "1"
+        TARGETED_DEVICE_FAMILY: "1,2"
 
 schemes:
   NiteOwlCounter:

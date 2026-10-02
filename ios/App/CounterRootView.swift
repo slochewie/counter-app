@@ -3,6 +3,7 @@ import SwiftUI
 struct CounterRootView: View {
     @Environment(\.openURL) private var openURL
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
     @ObservedObject var model: CounterAppModel
     @GestureState private var resetPressed = false
 
@@ -172,11 +173,11 @@ struct CounterRootView: View {
                     HStack {
                         Spacer()
                         Text(model.snapshot.map { String($0.count) } ?? "—")
-                            .font(.system(size: isWideLayout ? 108 : 72, weight: .semibold, design: .rounded))
+                            .font(.system(size: countFontSize, weight: .semibold, design: .rounded))
                             .monospacedDigit()
                         Spacer()
                     }
-                    .padding(.vertical, isWideLayout ? 28 : 16)
+                    .padding(.vertical, countVerticalPadding)
 
                     HStack(spacing: isWideLayout ? 18 : 12) {
                         Button {
@@ -185,9 +186,9 @@ struct CounterRootView: View {
                             }
                         } label: {
                             Text("−1")
-                                .font(.system(size: isWideLayout ? 46 : 34, weight: .bold, design: .rounded))
+                                .font(.system(size: controlFontSize, weight: .bold, design: .rounded))
                                 .foregroundStyle(Color.black)
-                                .frame(maxWidth: .infinity, minHeight: isWideLayout ? 104 : 76)
+                                .frame(maxWidth: .infinity, minHeight: controlHeight)
                                 .background(Color(red: 245 / 255, green: 206 / 255, blue: 69 / 255))
                                 .clipShape(RoundedRectangle(cornerRadius: isWideLayout ? 22 : 18, style: .continuous))
                         }
@@ -199,9 +200,9 @@ struct CounterRootView: View {
                             }
                         } label: {
                             Text("+1")
-                                .font(.system(size: isWideLayout ? 46 : 34, weight: .bold, design: .rounded))
+                                .font(.system(size: controlFontSize, weight: .bold, design: .rounded))
                                 .foregroundStyle(Color.white)
-                                .frame(maxWidth: .infinity, minHeight: isWideLayout ? 104 : 76)
+                                .frame(maxWidth: .infinity, minHeight: controlHeight)
                                 .background(Color(red: 80 / 255, green: 117 / 255, blue: 187 / 255))
                                 .clipShape(RoundedRectangle(cornerRadius: isWideLayout ? 22 : 18, style: .continuous))
                         }
@@ -212,7 +213,7 @@ struct CounterRootView: View {
                     Text(resetPressed ? "Keep Holding…" : "Reset")
                         .font(isWideLayout ? .title3.bold() : .headline)
                         .foregroundStyle(Color(red: 1.0, green: 0.38, blue: 0.38))
-                        .frame(maxWidth: .infinity, minHeight: isWideLayout ? 68 : 50)
+                        .frame(maxWidth: .infinity, minHeight: resetHeight)
                         .background(
                             resetPressed
                                 ? Color(red: 0.25, green: 0.10, blue: 0.11)
@@ -283,11 +284,40 @@ struct CounterRootView: View {
         horizontalSizeClass == .regular
     }
 
+    private var isWideLandscape: Bool {
+        isWideLayout && verticalSizeClass == .compact
+    }
+
+    private var countFontSize: CGFloat {
+        if isWideLandscape { return 88 }
+        return isWideLayout ? 108 : 72
+    }
+
+    private var countVerticalPadding: CGFloat {
+        if isWideLandscape { return 12 }
+        return isWideLayout ? 28 : 16
+    }
+
+    private var controlFontSize: CGFloat {
+        if isWideLandscape { return 40 }
+        return isWideLayout ? 46 : 34
+    }
+
+    private var controlHeight: CGFloat {
+        if isWideLandscape { return 84 }
+        return isWideLayout ? 104 : 76
+    }
+
+    private var resetHeight: CGFloat {
+        if isWideLandscape { return 56 }
+        return isWideLayout ? 68 : 50
+    }
+
     private var selectorInsets: EdgeInsets {
         EdgeInsets(
-            top: isWideLayout ? 10 : 6,
+            top: isWideLandscape ? 6 : (isWideLayout ? 10 : 6),
             leading: isWideLayout ? 28 : 20,
-            bottom: isWideLayout ? 10 : 6,
+            bottom: isWideLandscape ? 6 : (isWideLayout ? 10 : 6),
             trailing: isWideLayout ? 28 : 20
         )
     }
@@ -324,7 +354,7 @@ struct CounterRootView: View {
             .foregroundStyle(.primary)
             .lineLimit(1)
             .truncationMode(.tail)
-            .frame(maxWidth: .infinity, minHeight: isWideLayout ? 64 : 50)
+            .frame(maxWidth: .infinity, minHeight: isWideLandscape ? 54 : (isWideLayout ? 64 : 50))
             .padding(.horizontal, isWideLayout ? 22 : 16)
             .overlay {
                 RoundedRectangle(cornerRadius: isWideLayout ? 20 : 16, style: .continuous)

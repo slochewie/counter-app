@@ -109,6 +109,8 @@ struct CounterRootView: View {
             Spacer()
         }
         .padding()
+        .frame(maxWidth: 560)
+        .frame(maxWidth: .infinity)
     }
 
     private var signedInView: some View {
@@ -177,7 +179,7 @@ struct CounterRootView: View {
                 }
             }
 
-            if let selection = model.selected {
+            if model.selected != nil {
                 Section {
                     HStack {
                         Spacer()
@@ -272,6 +274,8 @@ struct CounterRootView: View {
                 )
             }
         }
+        .frame(maxWidth: 640)
+        .frame(maxWidth: .infinity)
         .refreshable {
             await model.refresh()
         }
@@ -309,47 +313,5 @@ struct CounterRootView: View {
         return model.organizations.first(where: {
             $0.organizationID == organizationID
         })?.organizationName ?? "Select an organization"
-    }
-
-    private var organizationBinding: Binding<String?> {
-        Binding(
-            get: { model.selectedOrganizationID },
-            set: { organizationID in
-                guard let organizationID else {
-                    return
-                }
-
-                do {
-                    try model.selectOrganization(organizationID)
-                    if model.selected != nil {
-                        Task {
-                            await model.refresh()
-                        }
-                    }
-                } catch {
-                    model.errorMessage = error.localizedDescription
-                }
-            }
-        )
-    }
-
-    private var selectedBinding: Binding<CounterSelection?> {
-        Binding(
-            get: { model.selected },
-            set: { selection in
-                guard let selection else {
-                    return
-                }
-
-                do {
-                    try model.select(selection)
-                    Task {
-                        await model.refresh()
-                    }
-                } catch {
-                    model.errorMessage = error.localizedDescription
-                }
-            }
-        )
     }
 }

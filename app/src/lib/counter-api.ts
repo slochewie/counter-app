@@ -4,7 +4,10 @@ export type CounterApiState = {
   count: number;
   updatedBy: string | null;
   receivedAt: string;
+  stateTopic: string;
 };
+
+export type CounterAction = "increment" | "decrement" | "reset";
 
 async function authorizationHeader() {
   const { data, error } = await authClient.token();
@@ -47,7 +50,7 @@ export async function getCounterState(
 export async function sendCounterCommand(
   organizationId: string,
   counterId: string,
-  action: "increment" | "decrement",
+  action: CounterAction,
 ) {
   const authorization = await authorizationHeader();
   const response = await fetch("/api/counter/command", {

@@ -218,12 +218,17 @@ export async function getCounterState(
   const client = await connectCounterClient(config);
   const getTopic = counterTopic(config, counterId, "get");
 
-  return waitForCounterState(client, config, counterId, () => {
+  const state = await waitForCounterState(client, config, counterId, () => {
     client.publish(
       getTopic,
       JSON.stringify({ source: "counter_api", location: counterId }),
     );
   });
+
+  return {
+    ...state,
+    stateTopic: counterTopic(config, counterId, "state"),
+  };
 }
 
 export async function sendCounterCommand(
@@ -244,7 +249,7 @@ export async function sendCounterCommand(
   const client = await connectCounterClient(config);
   const commandTopic = counterTopic(config, counterId, "command");
 
-  return waitForCounterState(
+  const state = await waitForCounterState(
     client,
     config,
     counterId,
@@ -262,5 +267,10 @@ export async function sendCounterCommand(
     },
     { ignoreRetained: true },
   );
+
+  return {
+    ...state,
+    stateTopic: counterTopic(config, counterId, "state"),
+  };
 }
 

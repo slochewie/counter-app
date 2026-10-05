@@ -12,7 +12,7 @@ import {
   counterKey,
   findCounterBySlugs,
 } from "#/lib/counter-routes.ts";
-import { useCounterMqtt } from "#/lib/use-counter-mqtt.ts";
+import { useCounterState } from "#/lib/use-counter-state.ts";
 
 const RESET_HOLD_MS = 800;
 
@@ -143,15 +143,20 @@ export function CounterScreen({ organizationSlug, counterSlug }: CounterScreenPr
       )
     : [];
   const locationId = selectedCounter?.counterId ?? null;
-  const actor = session
-    ? {
-        id: session.user.id,
-        name: session.user.name || session.user.email,
-      }
-    : null;
-  const mqttLocationId = counterAccessState === "allowed" ? locationId : null;
-  const { count, status, updatedAt, updatedBy, sendCommand } =
-    useCounterMqtt(mqttLocationId, actor);
+  const transportOrganizationId =
+    counterAccessState === "allowed"
+      ? selectedCounter?.organizationId ?? null
+      : null;
+  const transportCounterId =
+    counterAccessState === "allowed" ? locationId : null;
+  const {
+    count,
+    status,
+    updatedAt,
+    updatedBy,
+    stateTopic,
+    sendCommand,
+  } = useCounterState(transportOrganizationId, transportCounterId);
   const isConnected = status === "connected";
 
   useEffect(() => {
@@ -349,7 +354,7 @@ export function CounterScreen({ organizationSlug, counterSlug }: CounterScreenPr
     resetTimerRef.current = setTimeout(() => {
       resetTimerRef.current = null;
       setIsResetHolding(false);
-      sendCommand("reset");
+      void sendCommand("reset");
     }, RESET_HOLD_MS);
   }
 
@@ -360,10 +365,6 @@ export function CounterScreen({ organizationSlug, counterSlug }: CounterScreenPr
   if (!session) {
     return null;
   }
-
-  const stateTopic = locationId
-    ? `counters/${locationId}/capacity/state`
-    : "—";
 
   return (
     <CounterPageShell>
@@ -432,14 +433,14 @@ export function CounterScreen({ organizationSlug, counterSlug }: CounterScreenPr
                 <Button
                   className="h-20 touch-manipulation rounded-2xl border border-[#d8b63c] border-t-[#ffe77e] bg-[#f5ce45] text-4xl font-bold text-zinc-950 shadow-[0_5px_0_#b28f22,0_8px_14px_rgba(0,0,0,0.28)] transition-[transform,box-shadow,background-color] hover:bg-[#f8d65c] active:translate-y-[3px] active:shadow-[0_2px_0_#b28f22,0_4px_8px_rgba(0,0,0,0.24)] disabled:bg-zinc-900 disabled:text-zinc-600 disabled:shadow-none sm:h-28 sm:text-5xl"
                   disabled={!isConnected}
-                  onClick={() => sendCommand("decrement")}
+                  onClick={() => void sendCommand("decrement")}
                 >
                   −1
                 </Button>
                 <Button
                   className="h-20 touch-manipulation rounded-2xl border border-[#4667a4] border-t-[#7f9bd5] bg-[#5075bb] text-4xl font-bold text-white shadow-[0_5px_0_#344f87,0_8px_14px_rgba(0,0,0,0.28)] transition-[transform,box-shadow,background-color] hover:bg-[#6085cb] active:translate-y-[3px] active:shadow-[0_2px_0_#344f87,0_4px_8px_rgba(0,0,0,0.24)] disabled:bg-zinc-800 disabled:text-zinc-600 disabled:shadow-none sm:h-28 sm:text-5xl"
                   disabled={!isConnected}
-                  onClick={() => sendCommand("increment")}
+                  onClick={() => void sendCommand("increment")}
                 >
                   +1
                 </Button>
@@ -493,7 +494,7 @@ export function CounterScreen({ organizationSlug, counterSlug }: CounterScreenPr
                   <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 px-2 pb-1 pt-2 text-xs sm:text-sm">
                     <dt className="text-zinc-500">Topic</dt>
                     <dd className="break-all text-right font-mono text-[11px] text-zinc-400 sm:text-xs">
-                      {stateTopic}
+                      {stateTopic ?? "—"}
                     </dd>
 
                     <dt className="text-zinc-500">Last update</dt>

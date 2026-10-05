@@ -239,8 +239,21 @@ export async function getCounterState(
   );
   const config = mqttConfig(provisioning);
   const mqttTopicId = counterMqttTopicId(provisioning, counterId);
-  const client = await connectCounterClient(config);
   const getTopic = counterTopic(config, mqttTopicId, "get");
+  const stateTopic = counterTopic(config, mqttTopicId, "state");
+
+  console.info("[Counter MQTT] state request", {
+    organizationId,
+    organizationName: provisioning.organization.name,
+    counterId,
+    counterName: provisioning.counter.name,
+    mqttTopicId,
+    brokerUrl: config.url,
+    getTopic,
+    stateTopic,
+  });
+
+  const client = await connectCounterClient(config);
 
   const state = await waitForCounterState(client, config, mqttTopicId, () => {
     client.publish(
@@ -251,7 +264,7 @@ export async function getCounterState(
 
   return {
     ...state,
-    stateTopic: counterTopic(config, mqttTopicId, "state"),
+    stateTopic,
   };
 }
 
@@ -271,8 +284,22 @@ export async function sendCounterCommand(
   );
   const config = mqttConfig(provisioning);
   const mqttTopicId = counterMqttTopicId(provisioning, counterId);
-  const client = await connectCounterClient(config);
   const commandTopic = counterTopic(config, mqttTopicId, "command");
+  const stateTopic = counterTopic(config, mqttTopicId, "state");
+
+  console.info("[Counter MQTT] command request", {
+    organizationId,
+    organizationName: provisioning.organization.name,
+    counterId,
+    counterName: provisioning.counter.name,
+    mqttTopicId,
+    brokerUrl: config.url,
+    commandTopic,
+    stateTopic,
+    action,
+  });
+
+  const client = await connectCounterClient(config);
 
   const state = await waitForCounterState(
     client,
@@ -295,7 +322,7 @@ export async function sendCounterCommand(
 
   return {
     ...state,
-    stateTopic: counterTopic(config, mqttTopicId, "state"),
+    stateTopic,
   };
 }
 

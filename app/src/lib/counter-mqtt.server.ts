@@ -29,8 +29,13 @@ function normalizeTopicPrefix(topicPrefix: string) {
 
 function mqttConfig(provisioning: CounterProvisioning): CounterMqttConfig {
   const { mqtt: mqttProvisioning } = provisioning;
-  const url =
-    `${mqttProvisioning.protocol}://${mqttProvisioning.host}:${mqttProvisioning.port}`;
+  const websocketConfigured =
+    mqttProvisioning.websocketHost &&
+    mqttProvisioning.websocketPort &&
+    mqttProvisioning.websocketProtocol;
+  const url = websocketConfigured
+    ? `${mqttProvisioning.websocketProtocol}://${mqttProvisioning.websocketHost}:${mqttProvisioning.websocketPort}`
+    : `${mqttProvisioning.protocol}://${mqttProvisioning.host}:${mqttProvisioning.port}`;
 
   return {
     url,

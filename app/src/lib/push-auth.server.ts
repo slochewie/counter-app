@@ -30,6 +30,9 @@ export type CounterProvisioning = {
     host: string;
     port: number;
     protocol: "mqtt" | "mqtts";
+    websocketHost?: string | null;
+    websocketPort?: number | null;
+    websocketProtocol?: "ws" | "wss" | null;
     username: string | null;
     password: string | null;
     topicPrefix: string;

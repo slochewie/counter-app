@@ -60,21 +60,38 @@ function assertCounterId(counterId: string) {
   }
 }
 
+function legacyCounterLocationId(
+  provisioning: CounterProvisioning,
+  counterId: string,
+) {
+  const legacyLocationId = counterLocationIdForOrganization(
+    provisioning.organization.name,
+  );
+
+  return legacyLocationId === counterId ? legacyLocationId : null;
+}
+
 function counterMqttTopicId(
   provisioning: CounterProvisioning,
   counterId: string,
 ) {
-  if (provisioning.counter.name === "Capacity Counter") {
-    const legacyLocationId = counterLocationIdForOrganization(
-      provisioning.organization.name,
-    );
+  return legacyCounterLocationId(provisioning, counterId) ?? counterId;
+}
 
-    if (legacyLocationId) {
-      return legacyLocationId;
-    }
+function counterMqttConfig(
+  provisioning: CounterProvisioning,
+  counterId: string,
+) {
+  const config = mqttConfig(provisioning);
+
+  if (legacyCounterLocationId(provisioning, counterId)) {
+    return {
+      ...config,
+      topicPrefix: "",
+    };
   }
 
-  return counterId;
+  return config;
 }
 
 function parseCounterState(message: Buffer): CounterState | null {
@@ -241,21 +258,10 @@ export async function getCounterState(
     organizationId,
     counterId,
   );
-  const config = mqttConfig(provisioning);
+  const config = counterMqttConfig(provisioning, counterId);
   const mqttTopicId = counterMqttTopicId(provisioning, counterId);
   const getTopic = counterTopic(config, mqttTopicId, "get");
   const stateTopic = counterTopic(config, mqttTopicId, "state");
-
-  console.info("[Counter MQTT] state request", {
-    organizationId,
-    organizationName: provisioning.organization.name,
-    counterId,
-    counterName: provisioning.counter.name,
-    mqttTopicId,
-    brokerUrl: config.url,
-    getTopic,
-    stateTopic,
-  });
 
   const client = await connectCounterClient(config);
 
@@ -286,22 +292,10 @@ export async function sendCounterCommand(
     organizationId,
     counterId,
   );
-  const config = mqttConfig(provisioning);
+  const config = counterMqttConfig(provisioning, counterId);
   const mqttTopicId = counterMqttTopicId(provisioning, counterId);
   const commandTopic = counterTopic(config, mqttTopicId, "command");
   const stateTopic = counterTopic(config, mqttTopicId, "state");
-
-  console.info("[Counter MQTT] command request", {
-    organizationId,
-    organizationName: provisioning.organization.name,
-    counterId,
-    counterName: provisioning.counter.name,
-    mqttTopicId,
-    brokerUrl: config.url,
-    commandTopic,
-    stateTopic,
-    action,
-  });
 
   const client = await connectCounterClient(config);
 

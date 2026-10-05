@@ -1,5 +1,9 @@
-import mqtt, { type MqttClient } from "mqtt";
+import mqtt, { type IClientOptions, type MqttClient } from "mqtt";
 
+import {
+  getCounterProvisioning,
+  type CounterProvisioning,
+} from "#/lib/push-auth.server.ts";
 
 export type CounterCommand = "increment" | "decrement" | "reset";
 
@@ -11,19 +15,37 @@ export type CounterState = {
 
 const RESPONSE_TIMEOUT_MS = 5000;
 
-function mqttConfig() {
-  const host =
-    process.env.MQTT_HOST ??
-    process.env.VITE_MQTT_HOST ??
-    "wss://mqtt.niteowl.dev";
-  const username = process.env.MQTT_USERNAME ?? process.env.VITE_MQTT_USERNAME;
-  const password = process.env.MQTT_PASSWORD ?? process.env.VITE_MQTT_PASSWORD;
+type CounterMqttConfig = {
+  url: string;
+  username?: string;
+  password?: string;
+  topicPrefix: string;
+};
 
-  if (!username || !password) {
-    throw new Error("Counter MQTT credentials are not configured.");
-  }
+function normalizeTopicPrefix(topicPrefix: string) {
+  const trimmed = topicPrefix.trim().replace(/^\/+|\/+$/g, "");
+  return trimmed ? `${trimmed}/` : "";
+}
 
-  return { host, username, password };
+function mqttConfig(provisioning: CounterProvisioning): CounterMqttConfig {
+  const { mqtt: mqttProvisioning } = provisioning;
+  const url =
+    `${mqttProvisioning.protocol}://${mqttProvisioning.host}:${mqttProvisioning.port}`;
+
+  return {
+    url,
+    username: mqttProvisioning.username ?? undefined,
+    password: mqttProvisioning.password ?? undefined,
+    topicPrefix: normalizeTopicPrefix(mqttProvisioning.topicPrefix),
+  };
+}
+
+function counterTopic(
+  config: CounterMqttConfig,
+  counterId: string,
+  suffix: "state" | "get" | "command",
+) {
+  return `${config.topicPrefix}counters/${counterId}/capacity/${suffix}`;
 }
 
 function assertCounterId(counterId: string) {
@@ -82,11 +104,12 @@ function parseCounterState(message: Buffer): CounterState | null {
 
 function waitForCounterState(
   client: MqttClient,
+  config: CounterMqttConfig,
   counterId: string,
   publish: () => void,
   options: { ignoreRetained?: boolean } = {},
 ) {
-  const stateTopic = `counters/${counterId}/capacity/state`;
+  const stateTopic = counterTopic(config, counterId, "state");
 
   return new Promise<CounterState>((resolve, reject) => {
     let settled = false;
@@ -143,17 +166,23 @@ function waitForCounterState(
   });
 }
 
-function connectCounterClient() {
-  const { host, username, password } = mqttConfig();
-
+function connectCounterClient(config: CounterMqttConfig) {
   return new Promise<MqttClient>((resolve, reject) => {
-    const client = mqtt.connect(host, {
-      username,
-      password,
+    const options: IClientOptions = {
       reconnectPeriod: 0,
       clean: true,
       clientId: `counter_api_${Math.random().toString(16).slice(2)}`,
-    });
+    };
+
+    if (config.username) {
+      options.username = config.username;
+    }
+
+    if (config.password) {
+      options.password = config.password;
+    }
+
+    const client = mqtt.connect(config.url, options);
 
     const timeout = setTimeout(() => {
       client.end(true);
@@ -173,13 +202,23 @@ function connectCounterClient() {
   });
 }
 
-export async function getCounterState(counterId: string) {
+export async function getCounterState(
+  request: Request,
+  organizationId: string,
+  counterId: string,
+) {
   assertCounterId(counterId);
 
-  const client = await connectCounterClient();
-  const getTopic = `counters/${counterId}/capacity/get`;
+  const provisioning = await getCounterProvisioning(
+    request,
+    organizationId,
+    counterId,
+  );
+  const config = mqttConfig(provisioning);
+  const client = await connectCounterClient(config);
+  const getTopic = counterTopic(config, counterId, "get");
 
-  return waitForCounterState(client, counterId, () => {
+  return waitForCounterState(client, config, counterId, () => {
     client.publish(
       getTopic,
       JSON.stringify({ source: "counter_api", location: counterId }),
@@ -188,17 +227,26 @@ export async function getCounterState(counterId: string) {
 }
 
 export async function sendCounterCommand(
+  request: Request,
+  organizationId: string,
   counterId: string,
   action: CounterCommand,
   actorId: string,
 ) {
   assertCounterId(counterId);
 
-  const client = await connectCounterClient();
-  const commandTopic = `counters/${counterId}/capacity/command`;
+  const provisioning = await getCounterProvisioning(
+    request,
+    organizationId,
+    counterId,
+  );
+  const config = mqttConfig(provisioning);
+  const client = await connectCounterClient(config);
+  const commandTopic = counterTopic(config, counterId, "command");
 
   return waitForCounterState(
     client,
+    config,
     counterId,
     () => {
       client.publish(

@@ -13,6 +13,40 @@ type AvailableCountersResponse = {
   counters?: AvailableCounter[];
 };
 
+export type CounterProvisioning = {
+  organization: {
+    id: string;
+    name: string;
+  };
+  counter: {
+    id: string;
+    name: string;
+    maxCapacity: number | null;
+    allowNegative: boolean;
+  };
+  mqtt: {
+    sourceId: string;
+    name: string;
+    host: string;
+    port: number;
+    protocol: "mqtt" | "mqtts";
+    username: string | null;
+    password: string | null;
+    topicPrefix: string;
+  };
+  wifiNetworks: Array<{
+    id: string;
+    name: string;
+    ssid: string;
+    password: string | null;
+    hidden: boolean;
+  }>;
+};
+
+type CounterProvisioningResponse = CounterProvisioning & {
+  error?: string;
+};
+
 type JwtHeader = {
   alg?: string;
   kid?: string;
@@ -276,6 +310,41 @@ export async function getAvailableCounters(request: Request) {
 
   const result = (await response.json()) as AvailableCountersResponse;
   return result.counters ?? [];
+}
+
+export async function getCounterProvisioning(
+  request: Request,
+  organizationId: string,
+  counterId: string,
+) {
+  const internalSecret = process.env.COUNTER_AUTH_INTERNAL_SECRET?.trim();
+
+  if (!internalSecret) {
+    throw new Error("COUNTER_AUTH_INTERNAL_SECRET is not configured.");
+  }
+
+  const url = new URL(
+    `${getAuthBaseUrl(request)}/api/auth/counter/provisioning/internal`,
+  );
+  url.searchParams.set("organizationId", organizationId);
+  url.searchParams.set("counterId", counterId);
+
+  const response = await fetch(url, {
+    headers: {
+      "x-counter-internal-secret": internalSecret,
+    },
+  });
+
+  const result = (await response.json()) as CounterProvisioningResponse;
+
+  if (!response.ok || typeof result.error === "string") {
+    throw new Error(
+      result.error ??
+        `Unable to load Counter provisioning configuration (${response.status}).`,
+    );
+  }
+
+  return result;
 }
 
 export async function userCanAccessCounter(

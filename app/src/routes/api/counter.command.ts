@@ -69,7 +69,13 @@ export const Route = createFileRoute("/api/counter/command")({
         }
 
         try {
-          const state = await sendCounterCommand(counterId, action, userId);
+          const state = await sendCounterCommand(
+            request,
+            organizationId,
+            counterId,
+            action,
+            userId,
+          );
 
           return Response.json({
             organizationId,

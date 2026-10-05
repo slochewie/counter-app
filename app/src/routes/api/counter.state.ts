@@ -44,7 +44,11 @@ export const Route = createFileRoute("/api/counter/state")({
         }
 
         try {
-          const state = await getCounterState(counterId);
+          const state = await getCounterState(
+            request,
+            organizationId,
+            counterId,
+          );
 
           return Response.json({
             organizationId,

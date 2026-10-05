@@ -4,6 +4,7 @@ import {
   getCounterProvisioning,
   type CounterProvisioning,
 } from "#/lib/push-auth.server.ts";
+import { counterLocationIdForOrganization } from "#/lib/counter-locations.ts";
 
 export type CounterCommand = "increment" | "decrement" | "reset";
 
@@ -57,6 +58,23 @@ function assertCounterId(counterId: string) {
   if (!/^[A-Za-z0-9_-]+$/.test(counterId)) {
     throw new Error("Invalid counterId.");
   }
+}
+
+function counterMqttTopicId(
+  provisioning: CounterProvisioning,
+  counterId: string,
+) {
+  if (provisioning.counter.name === "Capacity Counter") {
+    const legacyLocationId = counterLocationIdForOrganization(
+      provisioning.organization.name,
+    );
+
+    if (legacyLocationId) {
+      return legacyLocationId;
+    }
+  }
+
+  return counterId;
 }
 
 function parseCounterState(message: Buffer): CounterState | null {
@@ -220,19 +238,20 @@ export async function getCounterState(
     counterId,
   );
   const config = mqttConfig(provisioning);
+  const mqttTopicId = counterMqttTopicId(provisioning, counterId);
   const client = await connectCounterClient(config);
-  const getTopic = counterTopic(config, counterId, "get");
+  const getTopic = counterTopic(config, mqttTopicId, "get");
 
-  const state = await waitForCounterState(client, config, counterId, () => {
+  const state = await waitForCounterState(client, config, mqttTopicId, () => {
     client.publish(
       getTopic,
-      JSON.stringify({ source: "counter_api", location: counterId }),
+      JSON.stringify({ source: "counter_api", location: mqttTopicId }),
     );
   });
 
   return {
     ...state,
-    stateTopic: counterTopic(config, counterId, "state"),
+    stateTopic: counterTopic(config, mqttTopicId, "state"),
   };
 }
 
@@ -251,13 +270,14 @@ export async function sendCounterCommand(
     counterId,
   );
   const config = mqttConfig(provisioning);
+  const mqttTopicId = counterMqttTopicId(provisioning, counterId);
   const client = await connectCounterClient(config);
-  const commandTopic = counterTopic(config, counterId, "command");
+  const commandTopic = counterTopic(config, mqttTopicId, "command");
 
   const state = await waitForCounterState(
     client,
     config,
-    counterId,
+    mqttTopicId,
     () => {
       client.publish(
         commandTopic,
@@ -266,7 +286,7 @@ export async function sendCounterCommand(
           source: "counter_api",
           updated_by: "Counter widget",
           updated_by_id: actorId,
-          location: counterId,
+          location: mqttTopicId,
         }),
       );
     },
@@ -275,7 +295,7 @@ export async function sendCounterCommand(
 
   return {
     ...state,
-    stateTopic: counterTopic(config, counterId, "state"),
+    stateTopic: counterTopic(config, mqttTopicId, "state"),
   };
 }
 

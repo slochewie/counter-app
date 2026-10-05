@@ -174,7 +174,11 @@ function waitForCounterState(
     };
 
     const timeout = setTimeout(() => {
-      finish(new Error("Timed out waiting for Counter state."));
+      finish(
+        new Error(
+          `Timed out waiting for Counter state on ${stateTopic}.`,
+        ),
+      );
     }, RESPONSE_TIMEOUT_MS);
 
     client.on("message", onMessage);

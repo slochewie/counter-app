@@ -23,6 +23,13 @@ type CounterMqttConfig = {
   topicPrefix: string;
 };
 
+type CounterMqttRoute = {
+  config: CounterMqttConfig;
+  mqttTopicId: string;
+};
+
+const counterRouteCache = new Map<string, string>();
+
 function normalizeTopicPrefix(topicPrefix: string) {
   const trimmed = topicPrefix.trim().replace(/^\/+|\/+$/g, "");
   return trimmed ? `${trimmed}/` : "";
@@ -78,20 +85,72 @@ function counterMqttTopicId(
   return legacyCounterLocationId(provisioning, counterId) ?? counterId;
 }
 
-function counterMqttConfig(
+function routeCacheKey(organizationId: string, counterId: string) {
+  return `${organizationId}:${counterId}`;
+}
+
+function counterMqttRoutes(
   provisioning: CounterProvisioning,
   counterId: string,
-) {
-  const config = mqttConfig(provisioning);
+): CounterMqttRoute[] {
+  const mqttTopicId = counterMqttTopicId(provisioning, counterId);
+  const configured = mqttConfig(provisioning);
 
   if (legacyCounterLocationId(provisioning, counterId)) {
-    return {
-      ...config,
-      topicPrefix: "",
-    };
+    return [
+      {
+        config: {
+          ...configured,
+          topicPrefix: "",
+        },
+        mqttTopicId,
+      },
+    ];
   }
 
-  return config;
+  if (!configured.topicPrefix) {
+    return [{ config: configured, mqttTopicId }];
+  }
+
+  return [
+    { config: configured, mqttTopicId },
+    {
+      config: {
+        ...configured,
+        topicPrefix: "",
+      },
+      mqttTopicId,
+    },
+  ];
+}
+
+function cachedCounterRoute(
+  organizationId: string,
+  counterId: string,
+  routes: CounterMqttRoute[],
+) {
+  const cachedPrefix = counterRouteCache.get(
+    routeCacheKey(organizationId, counterId),
+  );
+
+  if (cachedPrefix === undefined) {
+    return null;
+  }
+
+  return (
+    routes.find((route) => route.config.topicPrefix === cachedPrefix) ?? null
+  );
+}
+
+function rememberCounterRoute(
+  organizationId: string,
+  counterId: string,
+  route: CounterMqttRoute,
+) {
+  counterRouteCache.set(
+    routeCacheKey(organizationId, counterId),
+    route.config.topicPrefix,
+  );
 }
 
 function parseCounterState(message: Buffer): CounterState | null {
@@ -210,6 +269,83 @@ function waitForCounterState(
   });
 }
 
+function waitForCounterStateAcrossRoutes(
+  client: MqttClient,
+  routes: CounterMqttRoute[],
+  publish: () => void,
+) {
+  const stateTopics = routes.map((route) =>
+    counterTopic(route.config, route.mqttTopicId, "state"),
+  );
+
+  return new Promise<{ state: CounterState; route: CounterMqttRoute }>(
+    (resolve, reject) => {
+      let settled = false;
+
+      const finish = (
+        error: Error | null,
+        result?: { state: CounterState; route: CounterMqttRoute },
+      ) => {
+        if (settled) {
+          return;
+        }
+
+        settled = true;
+        clearTimeout(timeout);
+        client.removeListener("message", onMessage);
+        client.end(true);
+
+        if (error) {
+          reject(error);
+        } else if (result) {
+          resolve(result);
+        }
+      };
+
+      const onMessage = (topic: string, message: Buffer) => {
+        const route = routes.find(
+          (candidate) =>
+            counterTopic(
+              candidate.config,
+              candidate.mqttTopicId,
+              "state",
+            ) === topic,
+        );
+
+        if (!route) {
+          return;
+        }
+
+        const state = parseCounterState(message);
+
+        if (state) {
+          finish(null, { state, route });
+        }
+      };
+
+      const timeout = setTimeout(() => {
+        finish(
+          new Error(
+            `Timed out waiting for Counter state on ${stateTopics.join(
+              " or ",
+            )}.`,
+          ),
+        );
+      }, RESPONSE_TIMEOUT_MS);
+
+      client.on("message", onMessage);
+      client.subscribe(stateTopics, (error) => {
+        if (error) {
+          finish(error);
+          return;
+        }
+
+        publish();
+      });
+    },
+  );
+}
+
 function connectCounterClient(config: CounterMqttConfig) {
   return new Promise<MqttClient>((resolve, reject) => {
     const options: IClientOptions = {
@@ -246,6 +382,43 @@ function connectCounterClient(config: CounterMqttConfig) {
   });
 }
 
+async function discoverCounterRoute(
+  organizationId: string,
+  counterId: string,
+  routes: CounterMqttRoute[],
+) {
+  const cached = cachedCounterRoute(organizationId, counterId, routes);
+
+  if (cached) {
+    return cached;
+  }
+
+  if (routes.length === 1) {
+    rememberCounterRoute(organizationId, counterId, routes[0]);
+    return routes[0];
+  }
+
+  const client = await connectCounterClient(routes[0].config);
+  const result = await waitForCounterStateAcrossRoutes(
+    client,
+    routes,
+    () => {
+      for (const route of routes) {
+        client.publish(
+          counterTopic(route.config, route.mqttTopicId, "get"),
+          JSON.stringify({
+            source: "counter_api",
+            location: route.mqttTopicId,
+          }),
+        );
+      }
+    },
+  );
+
+  rememberCounterRoute(organizationId, counterId, result.route);
+  return result.route;
+}
+
 export async function getCounterState(
   request: Request,
   organizationId: string,
@@ -258,23 +431,67 @@ export async function getCounterState(
     organizationId,
     counterId,
   );
-  const config = counterMqttConfig(provisioning, counterId);
-  const mqttTopicId = counterMqttTopicId(provisioning, counterId);
-  const getTopic = counterTopic(config, mqttTopicId, "get");
-  const stateTopic = counterTopic(config, mqttTopicId, "state");
+  const routes = counterMqttRoutes(provisioning, counterId);
+  const cached = cachedCounterRoute(organizationId, counterId, routes);
 
-  const client = await connectCounterClient(config);
-
-  const state = await waitForCounterState(client, config, mqttTopicId, () => {
-    client.publish(
-      getTopic,
-      JSON.stringify({ source: "counter_api", location: mqttTopicId }),
+  if (cached) {
+    const client = await connectCounterClient(cached.config);
+    const getTopic = counterTopic(
+      cached.config,
+      cached.mqttTopicId,
+      "get",
     );
-  });
+    const state = await waitForCounterState(
+      client,
+      cached.config,
+      cached.mqttTopicId,
+      () => {
+        client.publish(
+          getTopic,
+          JSON.stringify({
+            source: "counter_api",
+            location: cached.mqttTopicId,
+          }),
+        );
+      },
+    );
+
+    return {
+      ...state,
+      stateTopic: counterTopic(
+        cached.config,
+        cached.mqttTopicId,
+        "state",
+      ),
+    };
+  }
+
+  const client = await connectCounterClient(routes[0].config);
+  const result = await waitForCounterStateAcrossRoutes(
+    client,
+    routes,
+    () => {
+      for (const route of routes) {
+        client.publish(
+          counterTopic(route.config, route.mqttTopicId, "get"),
+          JSON.stringify({
+            source: "counter_api",
+            location: route.mqttTopicId,
+          }),
+        );
+      }
+    },
+  );
+
+  rememberCounterRoute(organizationId, counterId, result.route);
 
   return {
-    ...state,
-    stateTopic,
+    ...result.state,
+    stateTopic: counterTopic(
+      result.route.config,
+      result.route.mqttTopicId,
+      "state",
+    ),
   };
 }
 
@@ -292,17 +509,29 @@ export async function sendCounterCommand(
     organizationId,
     counterId,
   );
-  const config = counterMqttConfig(provisioning, counterId);
-  const mqttTopicId = counterMqttTopicId(provisioning, counterId);
-  const commandTopic = counterTopic(config, mqttTopicId, "command");
-  const stateTopic = counterTopic(config, mqttTopicId, "state");
+  const routes = counterMqttRoutes(provisioning, counterId);
+  const route = await discoverCounterRoute(
+    organizationId,
+    counterId,
+    routes,
+  );
+  const commandTopic = counterTopic(
+    route.config,
+    route.mqttTopicId,
+    "command",
+  );
+  const stateTopic = counterTopic(
+    route.config,
+    route.mqttTopicId,
+    "state",
+  );
 
-  const client = await connectCounterClient(config);
+  const client = await connectCounterClient(route.config);
 
   const state = await waitForCounterState(
     client,
-    config,
-    mqttTopicId,
+    route.config,
+    route.mqttTopicId,
     () => {
       client.publish(
         commandTopic,
@@ -311,7 +540,7 @@ export async function sendCounterCommand(
           source: "counter_api",
           updated_by: "Counter widget",
           updated_by_id: actorId,
-          location: mqttTopicId,
+          location: route.mqttTopicId,
         }),
       );
     },
@@ -323,4 +552,3 @@ export async function sendCounterCommand(
     stateTopic,
   };
 }
-

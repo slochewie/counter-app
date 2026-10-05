@@ -25,18 +25,30 @@ const client = mqtt.connect(host, {
 
 client.on("connect", () => {
   console.log("Counter FCM bridge connected");
-  client.subscribe("counters/+/capacity/state", (error) => {
-    if (error) {
-      console.error("Counter FCM bridge subscribe failed", error);
-      return;
-    }
-    console.log("Counter FCM bridge subscribed");
-  });
+  client.subscribe(
+    [
+      "counters/+/capacity/state",
+      "organizations/+/counters/+/capacity/state",
+    ],
+    (error) => {
+      if (error) {
+        console.error("Counter FCM bridge subscribe failed", error);
+        return;
+      }
+      console.log("Counter FCM bridge subscribed");
+    },
+  );
 });
 
 client.on("message", (topic, message) => {
-  const match = /^counters\/([A-Za-z0-9_-]+)\/capacity\/state$/.exec(topic);
-  if (!match) return;
+  const scopedMatch =
+    /^organizations\/([^/]+)\/counters\/([A-Za-z0-9_-]+)\/capacity\/state$/.exec(
+      topic,
+    );
+  const legacyMatch =
+    /^counters\/([A-Za-z0-9_-]+)\/capacity\/state$/.exec(topic);
+
+  if (!scopedMatch && !legacyMatch) return;
 
   let data: unknown;
   try {
@@ -57,18 +69,33 @@ client.on("message", (topic, message) => {
 
   if (!Number.isFinite(count)) return;
 
-  const counterId = match[1];
-  if (lastCounts.get(counterId) === count) return;
-  lastCounts.set(counterId, count);
+  const organizationId = scopedMatch?.[1] ?? null;
+  const counterId = scopedMatch?.[2] ?? legacyMatch?.[1];
 
-  const organizationIds = listOrganizationIdsForCounter(counterId);
+  if (!counterId) return;
+
+  const stateKey = organizationId
+    ? `${organizationId}:${counterId}`
+    : `legacy:${counterId}`;
+
+  if (lastCounts.get(stateKey) === count) return;
+  lastCounts.set(stateKey, count);
+
+  const organizationIds = organizationId
+    ? [organizationId]
+    : listOrganizationIdsForCounter(counterId);
+
   void Promise.all(
-    organizationIds.map((organizationId) =>
-      sendFcmStateToCounter(organizationId, counterId, count),
+    organizationIds.map((resolvedOrganizationId) =>
+      sendFcmStateToCounter(resolvedOrganizationId, counterId, count),
     ),
   )
     .then(() => {
-      console.log("Counter FCM bridge sent state", { counterId, count });
+      console.log("Counter FCM bridge sent state", {
+        organizationId,
+        counterId,
+        count,
+      });
     })
     .catch((error) => {
       console.error("Counter FCM bridge delivery failed", error);
